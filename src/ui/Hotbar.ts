@@ -67,7 +67,7 @@ export class Hotbar {
         const have = this.inv.get(k as keyof typeof ITEMS);
         return `<span class="${have >= (n ?? 0) ? 'ok' : 'miss'}">${ITEMS[k as keyof typeof ITEMS].icon} ${have}/${n}</span>`;
       }).join(' ');
-      this.list.innerHTML = RECIPES.map((r, i) => {
+      this.list.innerHTML = '<h4 class="craft-sec first">⚔ Armas y munición</h4>' + RECIPES.map((r, i) => {
         const it = ITEMS[r.id];
         return `<div class="recipe"><div class="ri">${it.icon}</div><div class="rt"><b>${it.name}${r.amount > 1 ? ` ×${r.amount}` : ''}</b><small>${r.hint}</small><div class="cost">${costOf(r.cost)}</div></div>
           <button data-r="${i}" ${this.inv.has(r.cost) ? '' : 'disabled'}>Fabricar</button></div>`;

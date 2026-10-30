@@ -474,7 +474,7 @@ export class Game {
     this.audio.update(dt);
 
     this.hud.updateStats(this.survival);
-    this.hud.drawMinimap(pp.x, pp.z, this.cam.yaw, this.dinos.map((d) => ({
+    this.hud.drawMinimap(pp.x, pp.z, Math.PI - this.player.facing, this.dinos.map((d) => ({
       x: d.position.x, z: d.position.z, color: (d.cfg as Species).map.color, size: (d.cfg as Species).map.size,
     })).concat(this.buildings.shelters.map((s) => ({ x: s.position.x, z: s.position.z, color: '#ffcf4a', size: 4 }))));
     this.post.setMood(this.env.daylight, this.env.dusk);

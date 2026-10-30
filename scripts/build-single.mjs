@@ -2,8 +2,14 @@
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 const dir = 'dist/assets';
 let html = readFileSync('dist/index.html', 'utf8');
+// Imágenes y otros recursos: se incrustan como data URL dentro del CSS y el JS.
+const MIME = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', svg: 'image/svg+xml' };
+const media = readdirSync(dir).filter((f) => MIME[f.split('.').pop()]);
+const inlineMedia = (code) => media.reduce((c, f) => c.replace(new RegExp(`(\\./assets/|\\./|/assets/)?${f.replace(/[.]/g, '\\.')}`, 'g'),
+  () => `data:${MIME[f.split('.').pop()]};base64,` + readFileSync(`${dir}/${f}`).toString('base64')), code);
 for (const f of readdirSync(dir)) {
-  const code = readFileSync(`${dir}/${f}`, 'utf8');
+  if (media.includes(f)) continue;
+  const code = inlineMedia(readFileSync(`${dir}/${f}`, 'utf8'));
   if (f.endsWith('.js')) {
     html = html.replace(new RegExp(`<script type="module" crossorigin src="./assets/${f}"></script>`), () => '');
     html = html.replace('</body>', () => `<script type="module">${code}</script>\n</body>`);

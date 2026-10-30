@@ -18,6 +18,9 @@ export class HUD {
   private readonly mapCanvas = $<HTMLCanvasElement>('#minimap canvas');
   private readonly mapCtx = this.mapCanvas.getContext('2d')!;
   private mapImage: HTMLCanvasElement;
+  private readonly bigMap = $<HTMLElement>('#bigmap');
+  private readonly bigCanvas = $<HTMLCanvasElement>('#bigmap canvas');
+  get mapOpen() { return !this.bigMap.classList.contains('hidden'); }
   private readonly matEls = new Map<ItemId, HTMLElement>();
   private lastPrompt = '';
   private frames = 0;
@@ -37,6 +40,13 @@ export class HUD {
       this.matEls.set(id, el);
     }
     this.mapImage = this.renderMap(terrain);
+    // Tocar el minimapa abre el mapa grande; tocar fuera o la ✕ lo cierra.
+    const stop = (e: Event) => e.stopPropagation();
+    $('#minimap').addEventListener('pointerdown', stop);
+    $('#minimap').addEventListener('click', () => this.toggleMap(true));
+    this.bigMap.addEventListener('pointerdown', stop);
+    this.bigMap.addEventListener('click', (e) => { if (e.target === this.bigMap) this.toggleMap(false); });
+    $('#bigmap-close').addEventListener('click', () => this.toggleMap(false));
   }
 
   show(v: boolean) { $('#hud').classList.toggle('hidden', !v); }
@@ -146,8 +156,35 @@ export class HUD {
     }
   }
 
-  /** Minimapa orientado al norte con el jugador en el centro y flecha según la cámara. */
-  drawMinimap(px: number, pz: number, camYaw: number, markers: MapMarker[]) {
+  toggleMap(open = !this.mapOpen) {
+    if (open === this.mapOpen) return;
+    this.bigMap.classList.toggle('hidden', !open);
+  }
+
+  /** Mapa grande de toda la isla, con el jugador, refugios y dinosaurios. */
+  private drawBigMap(px: number, pz: number, arrow: number, markers: MapMarker[]) {
+    const c = this.bigCanvas, ctx = c.getContext('2d')!, W = c.width;
+    ctx.drawImage(this.mapImage, 0, 0, W, W);
+    const k = W / (WORLD_HALF * 2), at = (x: number) => (x + WORLD_HALF) * k;
+    for (const m of markers) {
+      ctx.fillStyle = m.color;
+      ctx.beginPath(); ctx.arc(at(m.x), at(m.z), m.size * 1.3, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    ctx.save();
+    ctx.translate(at(px), at(pz));
+    ctx.rotate(arrow);
+    ctx.fillStyle = '#ffcf4a'; ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, -14); ctx.lineTo(10, 10); ctx.lineTo(0, 5); ctx.lineTo(-10, 10); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = '#ffcf4a'; ctx.font = 'bold 22px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('N', W / 2, 26);
+  }
+
+  /** Minimapa orientado al norte con el jugador en el centro; la flecha (ángulo en el mapa) indica hacia dónde camina. */
+  drawMinimap(px: number, pz: number, arrow: number, markers: MapMarker[]) {
+    if (this.mapOpen) this.drawBigMap(px, pz, arrow, markers);
     const ctx = this.mapCtx, W = this.mapCanvas.width;
     const range = 90; // metros visibles desde el centro
     const scale = this.mapImage.width / (WORLD_HALF * 2);
@@ -165,7 +202,7 @@ export class HUD {
     // Flecha del jugador (dirección de la cámara)
     ctx.save();
     ctx.translate(W / 2, W / 2);
-    ctx.rotate(-camYaw);
+    ctx.rotate(arrow);
     ctx.fillStyle = '#ffcf4a'; ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(6, 6); ctx.lineTo(0, 3); ctx.lineTo(-6, 6); ctx.closePath();
     ctx.fill(); ctx.stroke();

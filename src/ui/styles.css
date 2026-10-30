@@ -21,7 +21,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #16301d; col
 .hidden { display: none !important; }
 
 /* ---------- HUD ---------- */
-#hud { position: fixed; inset: 0; pointer-events: none; }
+#hud { position: fixed; inset: 0; pointer-events: none; z-index: 2; } /* por encima de los controles táctiles: el minimapa y 🛠 se pueden tocar */
 #stats { position: absolute; top: calc(12px + var(--safe-t)); left: calc(12px + var(--safe-l)); display: grid; gap: 6px;
   background: var(--ui-bg); padding: 10px 12px; border-radius: 14px; border: 2px solid var(--ui-border); }
 .stat { display: flex; align-items: center; gap: 8px; }
@@ -47,6 +47,14 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #16301d; col
 #minimap { position: absolute; top: calc(12px + var(--safe-t)); right: calc(12px + var(--safe-r)); width: 150px; height: 150px;
   border-radius: 50%; overflow: hidden; border: 3px solid var(--ui-border); background: #22381f; box-shadow: 0 4px 14px rgba(0,0,0,0.4); }
 #minimap canvas { width: 100%; height: 100%; display: block; }
+#minimap { pointer-events: auto; cursor: pointer; }
+#bigmap { position: absolute; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; pointer-events: auto; z-index: 6; }
+#bigmap.hidden { display: none; }
+.bigmap-box { background: rgba(18, 38, 24, 0.96); border: 3px solid var(--ui-border); border-radius: 18px; padding: 10px 14px 12px; }
+#bigmap canvas { display: block; width: min(80vh, calc(100vw - 60px), 640px); height: auto; aspect-ratio: 1; border-radius: 10px; }
+#bigmap .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; font-size: 13px; }
+#bigmap .legend span::first-letter { color: var(--c); }
+@media (max-height: 500px) { #bigmap canvas { width: min(calc(100vh - 110px), calc(100vw - 60px)); } }
 #minimap .n { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-weight: bold; color: var(--accent);
   text-shadow: 0 0 4px #000; font-size: 14px; }
 #fps { position: absolute; top: calc(232px + var(--safe-t)); right: calc(14px + var(--safe-r)); font: 12px monospace;
@@ -82,7 +90,7 @@ button { font-family: inherit; cursor: pointer; }
 body:not(.touch) #btn-pause { top: calc(170px + var(--safe-t)); right: calc(60px + var(--safe-r)); }
 
 /* ---------- Controles táctiles ---------- */
-#touch { position: fixed; inset: 0; pointer-events: none; }
+#touch { position: fixed; inset: 0; pointer-events: none; z-index: 1; }
 #look-zone { position: absolute; top: 0; bottom: 0; right: 0; width: 55%; pointer-events: auto; touch-action: none; }
 #joystick { position: absolute; left: calc(26px + var(--safe-l)); bottom: calc(26px + var(--safe-b)); width: 150px; height: 150px;
   border-radius: 50%; background: rgba(0,0,0,0.25); border: 3px solid rgba(255,255,255,0.3); pointer-events: auto; touch-action: none; }
@@ -106,6 +114,12 @@ body.touch .desktop-only { display: none; }
 .panel { background: rgba(18, 38, 24, 0.92); border: 3px solid var(--ui-border); border-radius: 22px; padding: 22px 26px; min-width: 280px;
   max-width: 560px; width: 100%; display: flex; flex-direction: column; gap: 12px; align-items: stretch; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
 .title-panel .logo { font-size: 58px; line-height: 1; }
+/* Portada (imagen de Ivan) en el menú principal y de fondo, difuminada. */
+:root { --portada: url('./portada.jpg'); }
+#start-screen { background: linear-gradient(rgba(5,15,8,0.55), rgba(5,15,8,0.85)), var(--portada) center / cover; }
+.cover-art { width: min(100%, 54vh); aspect-ratio: 3 / 2; margin-inline: auto !important; background: var(--portada) center / cover; border-radius: 14px; margin: -4px 0 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.5); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .panel h1 { margin: 0; font-size: clamp(30px, 7vw, 48px); letter-spacing: 0.06em; color: var(--accent);
   text-shadow: 0 3px 0 var(--accent-dark), 0 6px 18px rgba(0,0,0,0.6); }
 .panel h2 { margin: 0; font-size: 20px; font-weight: normal; letter-spacing: 0.15em; text-transform: uppercase; }
@@ -302,6 +316,7 @@ body.touch #hotbar > * { width: 44px; height: 44px; min-height: 0; padding: 0; f
 #sleep.on { opacity: 1; }
 #sleep p { color: #e8ecff; font-size: 24px; font-weight: bold; text-align: center; padding: 0 20px; text-shadow: 0 2px 8px #000; }
 .craft-sec { margin: 12px 0 2px; color: var(--accent); font-size: 15px; }
+.craft-sec.first { margin-top: 6px; }
 #btn-craft { top: calc(202px + var(--safe-t)); }
 @media (max-width: 760px), (max-height: 500px) {
   #clock { top: calc(122px + var(--safe-t)); font-size: 11px; padding: 2px 6px; }

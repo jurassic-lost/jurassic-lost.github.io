@@ -220,6 +220,23 @@ const pos = (page) => page.evaluate(() => { const p = window.game.player.positio
   const p1 = await pos(page);
   await page.screenshot({ path: `${SHOTS}/9-movil-juego.png` });
   check('Controles táctiles visibles y el joystick mueve al personaje', touchVisible && Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) > 1, `movió ${Math.hypot(p1[0] - p0[0], p1[1] - p0[1]).toFixed(1)} m`);
+  // La flecha del mapa (ángulo θ: apunta a (sin θ, -cos θ) en el mapa) señala hacia donde camina.
+  const facing = await page.evaluate(() => window.game.player.facing);
+  const th = Math.PI - facing, mx = p1[0] - p0[0], mz = p1[1] - p0[1], ml = Math.hypot(mx, mz) || 1;
+  const dot = Math.sin(th) * mx / ml - Math.cos(th) * mz / ml;
+  check('La flecha del mapa apunta hacia donde camina', dot > 0.8, `coincidencia ${dot.toFixed(2)}`);
+  await page.locator('#minimap').tap();
+  await page.waitForTimeout(800);
+  const mapOpen = await page.isVisible('#bigmap canvas');
+  await page.screenshot({ path: `${SHOTS}/10-movil-mapa.png` });
+  await page.locator('#bigmap-close').tap();
+  await page.waitForTimeout(300);
+  check('Tocar el minimapa abre el mapa grande y la ✕ lo cierra', mapOpen && !(await page.isVisible('#bigmap canvas')));
+  await page.locator('#btn-craft').tap();
+  await page.waitForTimeout(500);
+  const craftTxt = await page.locator('#craft').innerText().catch(() => '');
+  await page.screenshot({ path: `${SHOTS}/11-movil-armas.png` });
+  check('El botón 🛠 abre el menú de armas', /Armas/.test(craftTxt) && /Lanza/.test(craftTxt), craftTxt.split('\n').slice(0, 3).join(' · '));
   errs.push(...page.errors);
   await ctx.close();
 
