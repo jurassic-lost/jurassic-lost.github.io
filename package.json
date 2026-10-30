@@ -1,0 +1,24 @@
+{
+  "name": "jurassic-lost",
+  "private": true,
+  "version": "0.2.0",
+  "description": "JURASSIC LOST: Atrapado en el tiempo — prototipo jugable (Etapa 1)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "typecheck": "tsc --noEmit",
+    "build:single": "npm run build && node scripts/build-single.mjs",
+    "test:names": "esbuild tests/nameFilter.test.ts --bundle --platform=node --outfile=node_modules/.cache/nameFilter.test.cjs --log-level=warning && node node_modules/.cache/nameFilter.test.cjs",
+    "test:e2e": "node tests/e2e-profiles.cjs"
+  },
+  "dependencies": {
+    "three": "0.169.0"
+  },
+  "devDependencies": {
+    "@types/three": "0.169.0",
+    "typescript": "5.6.3",
+    "vite": "5.4.10"
+  }
+}

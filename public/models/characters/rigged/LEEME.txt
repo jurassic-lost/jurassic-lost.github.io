@@ -1,0 +1,19 @@
+PERSONAJES CON ESQUELETO (MIXAMO) PARA JURASSIC LOST
+
+1. Modelo: sube el personaje a mixamo.com, colócale el esqueleto automático y descárgalo
+   ("Original Pose", con piel). Si es FBX, conviértelo a GLB (Blender: File > Export > glTF Binary).
+2. Animaciones: descarga de Mixamo, con el MISMO personaje, "Without Skin":
+   Idle, Walking, Running, Jump, Crouched Walking, Crouch Idle, Picking Up, Hammering (construir),
+   Hit Reaction (golpe), Punching o Stabbing (ataque). Conviértelas a GLB.
+   Pon nombres que contengan la palabra clave: idle, walk, run, jump, crouch, crouch_walk, pickup, build, hit, attack.
+3. Copia aquí los archivos y crea manifest.json:
+
+{
+  "boy":  { "model": "nino.glb", "animations": ["idle.glb", "walk.glb", "run.glb", "jump.glb", "crouch.glb", "crouch_walk.glb", "pickup.glb", "build.glb", "hit.glb", "attack.glb"] },
+  "girl": { "model": "nina.glb", "animations": ["idle.glb", "walk.glb", "run.glb", "jump.glb", "crouch.glb", "crouch_walk.glb", "pickup.glb", "build.glb", "hit.glb", "attack.glb"] },
+  "height": 1.5
+}
+
+Colores personalizables: nombra los materiales del modelo con skin / hair / shirt / pants
+(o piel / pelo / camiseta / pantalon) y el juego los teñirá con la apariencia elegida.
+Si no hay manifest.json, el juego usa el personaje procedural.

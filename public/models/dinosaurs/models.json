@@ -1,0 +1,37 @@
+[
+  {
+    "file": "Allosaurus.glb",
+    "meters_length": 8.6,
+    "triangles": 7220,
+    "rigged": false,
+    "animated": false
+  },
+  {
+    "file": "Ceratosaurus.glb",
+    "meters_length": 6.57,
+    "triangles": 7332,
+    "rigged": false,
+    "animated": false
+  },
+  {
+    "file": "Torvosaurus.glb",
+    "meters_length": 9.64,
+    "triangles": 8164,
+    "rigged": false,
+    "animated": false
+  },
+  {
+    "file": "Compsognathus.glb",
+    "meters_length": 2.4,
+    "triangles": 7844,
+    "rigged": false,
+    "animated": false
+  },
+  {
+    "file": "Megalosaurus.glb",
+    "meters_length": 7.45,
+    "triangles": 7844,
+    "rigged": false,
+    "animated": false
+  }
+]

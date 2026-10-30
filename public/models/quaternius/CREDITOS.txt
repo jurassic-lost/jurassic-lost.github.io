@@ -1,0 +1,28 @@
+Modelos de dinosaurio con esqueleto y animaciones
+=================================================
+
+Autor: Quaternius (https://quaternius.com)
+Paquete: "Animated LowPoly Dinosaurs" (diciembre de 2018)
+Página original: https://quaternius.itch.io/animated-lowpoly-dinosaurs
+Licencia: CC0 1.0 Universal (dominio público)
+          https://creativecommons.org/publicdomain/zero/1.0/
+          Se pueden usar gratis, también en proyectos comerciales, sin pedir permiso.
+          La atribución no es obligatoria, pero se agradece.
+
+Archivos GLB obtenidos de la biblioteca del repositorio público
+https://github.com/nrknithin/html-anime (models/library/*/model.glb,
+commit 58473743ea3d9668856de5917513432f8a0840f1). Ese repositorio indica para
+estos modelos: licencia CC0, autor Quaternius, paquete y página de arriba.
+Allí se convirtieron de FBX a GLB, se escalaron a una altura real y se comprimieron
+(meshopt). Los colores originales se sustituyen en el juego por colores propios.
+
+Archivos:
+  t-rex.glb            Tiranosaurio      (clips: Idle, Walk, Run, Attack, Jump, Death)
+  triceratops.glb      Triceratops
+  stegosaurus.glb      Estegosaurio
+  apatosaurus.glb      Apatosaurio
+  parasaurolophus.glb  Parasaurolofo
+  velociraptor.glb     Velocirraptor (incluido, aún sin usar)
+
+Nota técnica: los archivos originales venían comprimidos con meshopt. Se han
+descomprimido (misma geometría y animaciones) para que carguen sin WebAssembly.

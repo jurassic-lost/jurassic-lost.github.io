@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#16301d" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icon-192.png" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Jurassic Lost" />
+  <title>Jurassic Lost</title>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud" class="hidden">
+    <div id="save-ind"></div>
+    <div id="stats">
+      <div id="explorer" class="hidden"></div>
+      <div class="stat" data-stat="health"><span class="ico">❤️</span><div class="bar"><i></i></div></div>
+      <div class="stat" data-stat="hunger"><span class="ico">🍖</span><div class="bar"><i></i></div></div>
+      <div class="stat" data-stat="thirst"><span class="ico">💧</span><div class="bar"><i></i></div></div>
+      <div class="stat" data-stat="energy"><span class="ico">⚡</span><div class="bar"><i></i></div></div>
+    </div>
+    <div id="objective"><h3></h3><ul></ul></div>
+    <div id="minimap"><canvas width="150" height="150"></canvas><span class="n">N</span></div>
+    <div id="clock"></div>
+    <div id="fps" class="hidden"></div>
+    <div id="hotbar"></div>
+    <div id="materials"></div>
+    <div id="crosshair" class="hidden"></div>
+    <div id="hurt"></div>
+    <div id="craft" class="hidden">
+      <div class="craft-head"><h3>🛠 Fabricar</h3><button id="craft-close" aria-label="Cerrar">✕</button></div>
+      <div id="craft-list"></div>
+      <p class="craft-tip">Recoge 🪵 madera, 🪨 piedras, 🌿 fibra y 🍃 hojas grandes. Equipa con 1‑5 y ataca con clic o F.</p>
+    </div>
+    <button id="btn-craft" class="round small" aria-label="Fabricar">🛠</button>
+    <div id="prompt" class="hidden"></div>
+    <div id="toasts"></div>
+    <div id="vignette"></div>
+    <div id="sleep"><p></p></div>
+    <button id="btn-pause" class="round small" aria-label="Pausa">⏸</button>
+  </div>
+
+  <div id="touch" class="hidden">
+    <div id="look-zone"></div>
+    <div id="joystick"><div class="knob"></div></div>
+    <div id="buttons">
+      <button id="btn-action" class="round big" aria-label="Recoger o interactuar">✋</button>
+      <button id="btn-jump" class="round big" aria-label="Saltar">⤒</button>
+      <button id="btn-run" class="round" aria-label="Correr">🏃</button>
+      <button id="btn-crouch" class="round" aria-label="Agacharse">⤓</button>
+      <button id="btn-attack" class="round" aria-label="Atacar">⚔</button>
+    </div>
+  </div>
+
+  <div id="intro" class="hidden">
+    <div id="intro-phone">
+      <div class="screen">
+        <div class="app">◈ JUEGO SIN NOMBRE ◈</div>
+        <div class="hint">Haz la secuencia secreta…</div>
+        <div class="seq"></div>
+        <div class="err">ERROR TEMPORAL<br /><small>NO ES POSIBLE REGRESAR AL PRESENTE</small></div>
+      </div>
+    </div>
+    <div id="intro-caption"></div>
+    <div id="intro-title"><h1>JURASSIC LOST</h1><h2>Atrapado en el tiempo</h2></div>
+    <div id="intro-flash"></div>
+    <button id="intro-skip">Omitir ⏭</button>
+  </div>
+
+  <div id="start-screen" class="screen">
+    <div id="menu-main" class="panel title-panel">
+      <div class="logo">🦖</div>
+      <h1>JURASSIC LOST</h1>
+      <h2>Atrapado en el tiempo</h2>
+      <div id="loading">Generando la selva…</div>
+      <div id="welcome" class="hidden">
+        <h3>BIENVENIDO DE NUEVO, EXPLORADOR</h3>
+        <div class="welcome-card">
+          <img id="welcome-img" alt="Tu personaje" />
+          <div class="welcome-info">
+            <b id="welcome-name"></b>
+            <span id="welcome-region"></span>
+            <span id="welcome-mission"></span>
+            <span id="welcome-saved"></span>
+          </div>
+        </div>
+      </div>
+      <div id="menu-buttons" class="hidden">
+        <button id="btn-continue" class="primary">CONTINUAR AVENTURA</button>
+        <button id="btn-new">NUEVA AVENTURA</button>
+        <button id="btn-character">MI PERSONAJE</button>
+        <button id="btn-settings">CONFIGURACIÓN</button>
+      </div>
+      <div id="profile-slots" class="hidden"></div>
+      <p id="storage-warn" class="warn hidden">Este navegador no permite guardar datos: tu progreso se perderá al cerrar.</p>
+      <div class="controls-help">
+        <div class="desktop-only">
+          <b>WASD</b> caminar · <b>Ratón</b> cámara (clic para fijarla) · <b>Shift</b> correr<br />
+          <b>Espacio</b> saltar · <b>E</b> recoger / beber · <b>C</b> agacharse · <b>Rueda</b> zoom · <b>Esc</b> pausa<br />
+          <b>1‑5</b> elegir arma · <b>Clic / F</b> atacar · <b>T</b> fabricar herramientas
+        </div>
+        <div class="touch-only">
+          Joystick izquierdo para caminar · Desliza a la derecha para mirar<br />
+          ✋ recoger / beber · ⤒ saltar · 🏃 correr · ⤓ agacharse · ⚔ atacar · 🛠 fabricar
+        </div>
+      </div>
+    </div>
+
+    <div id="menu-creator" class="panel creator hidden">
+      <div class="creator-view">
+        <canvas id="creator-canvas"></canvas>
+        <p class="hint">↔ Arrastra para girar</p>
+      </div>
+      <div class="creator-opts">
+        <h2 id="cr-title">Crea tu explorador</h2>
+        <label>Nombre del explorador
+          <input id="cr-name" maxlength="16" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Ej.: Dino_Max" />
+        </label>
+        <div id="cr-name-msg" class="name-msg"></div>
+        <p class="privacy">🔒 Inventa un nombre de aventura. No escribas tu nombre real, apellidos, teléfono ni dirección.</p>
+        <div class="opt"><span>Personaje</span><div id="cr-char" class="seg"><button data-v="boy">👦 Niño</button><button data-v="girl">👧 Niña</button></div></div>
+        <div class="opt"><span>Color de piel</span><div id="cr-skin" class="swatches"></div></div>
+        <div class="opt"><span>Cabello</span><div id="cr-hair" class="seg"></div></div>
+        <div class="opt"><span>Color de cabello</span><div id="cr-hair-color" class="swatches"></div></div>
+        <div class="opt"><span>Color de camiseta</span><div id="cr-shirt" class="swatches"></div></div>
+        <div class="opt"><span>Color de pantalón</span><div id="cr-pants" class="swatches"></div></div>
+        <div class="opt"><span>Atuendo inicial</span><ul id="cr-outfit"></ul></div>
+        <div class="creator-buttons">
+          <button id="cr-back">ATRÁS</button>
+          <button id="cr-confirm">CONFIRMAR PERSONAJE</button>
+          <button id="cr-start" class="primary">COMENZAR AVENTURA</button>
+        </div>
+        <div id="cr-status" class="name-msg"></div>
+      </div>
+    </div>
+
+    <div id="menu-delete" class="panel hidden">
+      <h2>Borrar perfil</h2>
+      <p>Se borrará <b id="del-name"></b> con toda su partida. <b>No se puede deshacer.</b></p>
+      <label>Para confirmar, escribe el nombre del explorador:
+        <input id="del-input" autocomplete="off" autocapitalize="off" spellcheck="false" />
+      </label>
+      <button id="del-confirm" disabled>Borrar para siempre</button>
+      <button id="del-cancel" class="primary">Cancelar</button>
+    </div>
+  </div>
+
+  <div id="settings-screen" class="screen hidden">
+    <div class="panel">
+      <h2>Configuración</h2>
+      <label>Volumen general <input id="set-volume" type="range" min="0" max="1" step="0.05" /></label>
+      <label>Volumen de música y ambiente <input id="set-music" type="range" min="0" max="1" step="0.05" /></label>
+      <label>Volumen de efectos <input id="set-sfx" type="range" min="0" max="1" step="0.05" /></label>
+      <label>Calidad gráfica
+        <select id="set-quality">
+          <option value="low">Baja (móviles)</option>
+          <option value="medium">Media</option>
+          <option value="high">Alta</option>
+        </select>
+      </label>
+      <label>Sensibilidad de cámara <input id="set-sens" type="range" min="0.3" max="2" step="0.1" /></label>
+      <label>Idioma
+        <select id="set-lang">
+          <option value="es">Español</option>
+          <option value="en" disabled>English (próximamente)</option>
+        </select>
+      </label>
+      <fieldset class="access">
+        <legend>Accesibilidad</legend>
+        <label class="row"><input id="set-large" type="checkbox" /> Texto más grande</label>
+        <label class="row"><input id="set-contrast" type="checkbox" /> Alto contraste</label>
+        <label class="row"><input id="set-motion" type="checkbox" /> Reducir destellos y movimiento</label>
+        <label class="row"><input id="set-fps" type="checkbox" /> Mostrar FPS</label>
+      </fieldset>
+      <p class="tag" id="set-note">Las preferencias se guardan en tu perfil.</p>
+      <button id="set-back" class="primary">LISTO</button>
+    </div>
+  </div>
+
+  <div id="stats-screen" class="screen hidden">
+    <div class="panel">
+      <h2>Mi explorador</h2>
+      <div id="stats-body"></div>
+      <button id="stats-back" class="primary">LISTO</button>
+    </div>
+  </div>
+
+  <div id="pause-menu" class="screen hidden">
+    <div class="panel">
+      <h2>Pausa</h2>
+      <button id="btn-resume" class="primary">Continuar</button>
+      <button id="btn-stats">Mi explorador</button>
+      <button id="btn-pause-settings">Configuración</button>
+      <button id="btn-intro">Ver la introducción</button>
+      <button id="btn-respawn">Volver al claro inicial</button>
+      <button id="btn-exit">Guardar y salir al menú</button>
+      <button id="btn-reset">Reiniciar la partida de este perfil</button>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
