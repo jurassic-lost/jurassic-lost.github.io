@@ -12,7 +12,10 @@ import type { DinoRig } from './dinoModels';
  * Miran a +Z, como el juego. Si no se cargan, el juego usa los modelos procedurales.
  */
 // En la carpeta también están el parasaurolofo y el velocirraptor del mismo paquete, aún sin usar.
-export const QUAT_NAMES = ['t-rex', 'triceratops', 'stegosaurus', 'apatosaurus'] as const;
+export const QUAT_NAMES = ['t-rex', 'triceratops', 'stegosaurus', 'apatosaurus', 'trex-real'] as const;
+/** Modelos con texturas propias (no se recolorean): el T-rex realista que trajo Ivan. */
+const TEXTURED: readonly QuatName[] = ['trex-real'];
+const FILE: Partial<Record<QuatName, string>> = { 'trex-real': './models/trex/trex.glb' };
 export type QuatName = (typeof QUAT_NAMES)[number];
 
 interface QuatSource { scene: THREE.Object3D; clips: THREE.AnimationClip[] }
@@ -29,7 +32,7 @@ export async function preloadQuatModels() {
       // Incrustado: se decodifica aquí y se analiza sin descargar nada (algunos visores no permiten fetch de data:).
       const gltf = data
         ? await loader.parseAsync(dataUrlToBuffer(data), '')
-        : await loader.loadAsync(`./models/quaternius/${name}.glb`);
+        : await loader.loadAsync(FILE[name] ?? `./models/quaternius/${name}.glb`);
       sources.set(name, { scene: gltf.scene, clips: gltf.animations });
     } catch (e) {
       console.warn('No se pudo cargar el modelo', name, e);
@@ -147,14 +150,15 @@ export function buildQuatDino(name: QuatName, o: QuatOptions): DinoRig {
   model.traverse((obj) => {
     const b = obj as THREE.Bone;
     if (b.isBone) {
-      if (/^head$/i.test(b.name)) headBone = b;
-      if (/^neck$/i.test(b.name)) neck = b;
-      if (/^tail\d/i.test(b.name)) tail.push(b);
+      if (/^(DEF-)?head$/i.test(b.name)) headBone = b;
+      if (/^(DEF-)?neck(\.0?1)?$/i.test(b.name)) neck = b;
+      if (/^(DEF-)?tail\.?\d/i.test(b.name)) tail.push(b);
     }
     const m = obj as THREE.SkinnedMesh;
     if (!m.isMesh) return;
     m.castShadow = true;
     m.frustumCulled = false;
+    if (TEXTURED.includes(name)) return; // texturas y normales del propio modelo
     // Sombreado suave: se unen los vértices duplicados y se recalculan las normales.
     let smooth = smoothCache.get(m.geometry);
     if (!smooth) {
@@ -182,7 +186,7 @@ export function buildQuatDino(name: QuatName, o: QuatOptions): DinoRig {
     m.material = Array.isArray(m.material) ? out : out[0];
   });
   // Los huesos de la cola se ordenan de la base a la punta (Tail1 → Tail5).
-  tail.sort((a, b) => a.name.localeCompare(b.name));
+  tail.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
   const root = new THREE.Group(), body = new THREE.Group();
   root.add(body);
   body.add(model);

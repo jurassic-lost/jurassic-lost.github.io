@@ -1,0 +1,4 @@
+T-rex realista con esqueleto y animaciones (quieto, caminar, correr, atacar).
+Lo aportó Ivan, que lo descargó gratis ("tyrannosaurus-rex-rigged-animated.glb").
+Autor y página de origen: pendientes de confirmar para dar el crédito correspondiente.
+Para el juego se redujeron las texturas a 1024 px (512 la rugosidad); la geometría y las animaciones no se tocaron.

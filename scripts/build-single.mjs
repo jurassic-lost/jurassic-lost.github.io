@@ -23,6 +23,7 @@ const glb = {};
 for (const f of readdirSync(glbDir)) if (f.endsWith('.glb')) glb[f.replace('.glb', '')] = 'data:model/gltf-binary;base64,' + readFileSync(`${glbDir}/${f}`).toString('base64');
 // Dinosaurios con esqueleto de Quaternius (CC0), con prefijo q_.
 for (const f of ['t-rex.glb', 'triceratops.glb', 'stegosaurus.glb', 'apatosaurus.glb']) glb['q_' + f.replace('.glb', '')] = 'data:model/gltf-binary;base64,' + readFileSync(`public/models/quaternius/${f}`).toString('base64');
+glb['q_trex-real'] = 'data:model/gltf-binary;base64,' + readFileSync('public/models/trex/trex.glb').toString('base64');
 // Escenario realista de Poly Haven (CC0), con prefijo p_.
 for (const f of ['boulder.glb', 'island_tree.glb', 'small_tree.glb']) glb['p_' + f.replace('.glb', '')] = 'data:model/gltf-binary;base64,' + readFileSync(`public/models/props/${f}`).toString('base64');
 html = html.replace('</head>', () => `<script>window.__GLB=${JSON.stringify(glb)};</script>\n</head>`);

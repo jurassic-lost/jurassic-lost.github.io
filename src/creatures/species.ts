@@ -12,7 +12,8 @@ export type Species = SpeciesConfig & { map: { color: string; size: number }; di
  * naturales; si no se pudo cargar, se usa el modelo procedural de siempre.
  */
 const quat = (name: QuatName, height: number, scale: number, biped: boolean, colors: Record<string, string>, fallback: () => DinoRig) =>
-  () => (hasQuat(name) ? buildQuatDino(name, { height, speciesScale: scale, biped, colors }) : fallback());
+  () => (name === 't-rex' && hasQuat('trex-real') ? buildQuatDino('trex-real', { height, speciesScale: scale, biped, colors: {} })
+    : hasQuat(name) ? buildQuatDino(name, { height, speciesScale: scale, biped, colors }) : fallback());
 
 export const TRICERATOPS: Species = {
   hp: 160, reaction: 'defend', attack: 15, bodyHeight: 1.8,
