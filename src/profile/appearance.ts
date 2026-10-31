@@ -33,7 +33,7 @@ export const OUTFIT_NAMES: Record<string, string> = {
 export function defaultSettings(touch: boolean): ProfileSettings {
   return {
     volume: 0.7, musicVolume: 0.8, sfxVolume: 1, quality: touch ? 'low' : 'medium', sensitivity: 1,
-    language: 'es', showFps: false, largeText: false, highContrast: false, reduceMotion: false,
+    language: 'es', showFps: false, largeText: false, highContrast: false, reduceMotion: false, narration: true,
   };
 }
 

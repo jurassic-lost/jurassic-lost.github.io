@@ -141,7 +141,11 @@ export class HUD {
     this.targetTimer = window.setTimeout(() => el.classList.add('hidden'), 3500);
   }
 
+  /** Se llama con los textos que conviene leer en voz alta. */
+  onSpeak?: (text: string, kind: 'narrator' | 'phone' | 'story') => void;
+
   toast(text: string, big = false, kind = '', ms = 3300) {
+    if (big && kind !== 'phone') this.onSpeak?.(text, 'narrator');
     const el = document.createElement('div');
     el.className = 'toast' + (big ? ' big' : '') + (kind ? ` ${kind}` : '');
     el.textContent = text;
@@ -151,7 +155,7 @@ export class HUD {
   }
 
   /** Mensaje misterioso que llega al celular (dura más en pantalla). */
-  phone(text: string) { this.toast(`📱 ${text}`, false, 'phone', 6500); }
+  phone(text: string) { this.onSpeak?.(text, 'phone'); this.toast(`📱 ${text}`, false, 'phone', 6500); }
 
   /** Tarjeta de la historia (un hallazgo importante). Se cierra con «Continuar». */
   storyCard(title: string, body: string, artHtml: string): Promise<void> {
@@ -159,6 +163,7 @@ export class HUD {
     el.querySelector('.art')!.innerHTML = artHtml;
     el.querySelector('h3')!.textContent = title;
     el.querySelector('.body')!.textContent = body;
+    this.onSpeak?.(`${title}. ${body}`, 'story');
     el.classList.remove('hidden');
     const btn = el.querySelector('button') as HTMLButtonElement;
     setTimeout(() => btn.focus(), 50);

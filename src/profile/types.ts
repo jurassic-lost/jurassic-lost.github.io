@@ -43,6 +43,8 @@ export interface ProfileSettings {
   largeText: boolean;
   highContrast: boolean;
   reduceMotion: boolean;
+  /** Voz que lee los textos (las partidas antiguas no lo tienen: activada). */
+  narration?: boolean;
 }
 
 export interface Profile {

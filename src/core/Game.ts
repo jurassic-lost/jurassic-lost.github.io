@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { AudioManager } from '../audio/AudioManager';
+import { Narrator } from '../audio/Narrator';
 import { Dinosaur } from '../creatures/Dinosaur';
 import { MeatDrops, Meat, MEAT_HEALTH, MEAT_HUNGER } from '../items/MeatDrops';
 import { POPULATION, Species, TREX, TRICERATOPS } from '../creatures/species';
@@ -73,6 +74,8 @@ export class Game {
   readonly pterosaurs: Pterosaur[] = [];
   private trexWarned = 0;
   readonly audio = new AudioManager();
+  /** Voz que lee los textos importantes (se puede apagar en Opciones). */
+  readonly narrator = new Narrator();
   readonly hud: HUD;
   readonly hotbar: Hotbar;
   readonly projectiles: Projectiles;
@@ -148,6 +151,7 @@ export class Game {
     this.input = new Input(canvas);
     if (this.isTouch) this.touch = new TouchControls(this.input);
     this.hud = new HUD(this.terrain);
+    this.hud.onSpeak = (t, k) => this.narrator.say(t, k);
     this.projectiles = new Projectiles(this.terrain);
     this.scene.add(this.projectiles.group);
     this.hotbar = new Hotbar(this.inventory);
@@ -303,6 +307,9 @@ export class Game {
     this.audio.volume = s.volume;
     const ps = s as Partial<ProfileSettings>;
     this.audio.setMix(ps.musicVolume ?? 0.8, ps.sfxVolume ?? 1);
+    this.narrator.enabled = ps.narration !== false;
+    this.narrator.volume = s.volume;
+    if (!this.narrator.enabled) this.narrator.cancel();
     document.body.classList.toggle('large-text', !!ps.largeText);
     document.body.classList.toggle('high-contrast', !!ps.highContrast);
     document.body.classList.toggle('reduce-motion', !!ps.reduceMotion);
@@ -428,6 +435,7 @@ export class Game {
     document.getElementById('pause-menu')!.classList.toggle('hidden', !p);
     this.input.enabled = !p;
     this.input.flush();
+    if (p) this.narrator.pause(); else this.narrator.resume();
     if (p) { this.audio.suspend(); if (document.pointerLockElement) document.exitPointerLock(); void this.save('pause'); }
     else { this.audio.resume(); this.clock.getDelta(); }
   }

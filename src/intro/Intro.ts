@@ -62,12 +62,14 @@ export class Intro {
   private screenMsg(text: string) {
     const el = $('intro-phone').querySelector('.msg') as HTMLElement;
     el.textContent = text;
+    this.game.narrator.say(text.replace(/^>\s*/, ''), 'phone');
     el.classList.remove('type'); void el.offsetWidth; el.classList.add('type');
   }
 
   private caption(text: string) {
     const c = $('intro-caption');
     c.textContent = text;
+    if (text) this.game.narrator.say(text, 'story');
     c.classList.toggle('show', !!text);
   }
 
@@ -155,6 +157,7 @@ export class Intro {
   finish() {
     if (this.done) return;
     this.done = true;
+    this.game.narrator.cancel();
     window.removeEventListener('keydown', this.onKey);
     if (this.t < ROOM_END) this.room.dispose();
     $('intro').classList.add('hidden');

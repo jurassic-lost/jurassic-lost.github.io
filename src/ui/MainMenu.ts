@@ -284,6 +284,8 @@ export class MainMenu {
     bind('set-quality', 'quality', 'select');
     bind('set-sens', 'sensitivity', 'range');
     bind('set-lang', 'language', 'select');
+    if (s.narration === undefined) s.narration = true;
+    bind('set-voice', 'narration', 'check');
     bind('set-large', 'largeText', 'check');
     bind('set-contrast', 'highContrast', 'check');
     bind('set-motion', 'reduceMotion', 'check');
