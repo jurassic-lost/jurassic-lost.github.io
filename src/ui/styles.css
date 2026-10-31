@@ -245,7 +245,7 @@ body.touch .desktop-only { display: none; }
 .recipe button { padding: 10px 14px; border-radius: 10px; border: none; background: linear-gradient(180deg, var(--accent), var(--accent-dark)); color: #2a1a00; font-weight: bold; font-size: 15px; }
 .recipe button:disabled { background: #555; color: #999; }
 .craft-tip { font-size: 12px; opacity: 0.75; margin: 10px 0 0; }
-#btn-attack { position: absolute; right: 112px; bottom: 182px; }
+#btn-attack { position: absolute; right: 4px; bottom: -6px; }
 body.touch #hotbar { bottom: calc(14px + var(--safe-b)); left: 50%; }
 body.touch .slot { width: 46px; height: 46px; font-size: 21px; }
 body.touch #btn-craft { top: calc(64px + var(--safe-t)); right: calc(124px + var(--safe-r)); }
