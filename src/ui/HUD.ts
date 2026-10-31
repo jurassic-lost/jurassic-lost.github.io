@@ -141,14 +141,33 @@ export class HUD {
     this.targetTimer = window.setTimeout(() => el.classList.add('hidden'), 3500);
   }
 
-  toast(text: string, big = false) {
+  toast(text: string, big = false, kind = '', ms = 3300) {
     const el = document.createElement('div');
-    el.className = 'toast' + (big ? ' big' : '');
+    el.className = 'toast' + (big ? ' big' : '') + (kind ? ` ${kind}` : '');
     el.textContent = text;
     this.toasts.appendChild(el);
     while (this.toasts.children.length > 4) this.toasts.firstChild?.remove();
-    setTimeout(() => el.remove(), 3300);
+    setTimeout(() => el.remove(), ms);
   }
+
+  /** Mensaje misterioso que llega al celular (dura más en pantalla). */
+  phone(text: string) { this.toast(`📱 ${text}`, false, 'phone', 6500); }
+
+  /** Tarjeta de la historia (un hallazgo importante). Se cierra con «Continuar». */
+  storyCard(title: string, body: string, artHtml: string): Promise<void> {
+    const el = $('#story-card');
+    el.querySelector('.art')!.innerHTML = artHtml;
+    el.querySelector('h3')!.textContent = title;
+    el.querySelector('.body')!.textContent = body;
+    el.classList.remove('hidden');
+    const btn = el.querySelector('button') as HTMLButtonElement;
+    setTimeout(() => btn.focus(), 50);
+    return new Promise((res) => {
+      const close = (e: Event) => { e.stopPropagation(); el.classList.add('hidden'); btn.removeEventListener('click', close); res(); };
+      btn.addEventListener('click', close);
+    });
+  }
+  get cardOpen() { return !$('#story-card').classList.contains('hidden'); }
 
   setObjective(title: string, items: { text: string; done: boolean }[]) {
     $('#objective h3').textContent = title;

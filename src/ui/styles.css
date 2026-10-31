@@ -82,6 +82,17 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #16301d; col
 .toast { background: rgba(16, 32, 20, 0.85); border: 2px solid var(--accent); padding: 8px 18px; border-radius: 20px; font-size: 16px;
   animation: toast 3.2s forwards; text-align: center; max-width: 80vw; }
 .toast.big { font-size: 20px; padding: 12px 22px; color: var(--accent); }
+.toast.phone { background: rgba(6, 14, 10, 0.92); border-color: #6fe08a; color: #b8ffc6; font-family: ui-monospace, Consolas, monospace; font-size: 15px;
+  text-shadow: 0 0 6px rgba(120, 255, 150, 0.5); animation: phoneIn 0.5s steps(6); }
+@keyframes phoneIn { 0% { opacity: 0; } 30% { opacity: 1; } 45% { opacity: 0.3; } 100% { opacity: 1; } }
+#story-card { position: absolute; inset: 0; pointer-events: auto; display: grid; place-items: center; background: rgba(3, 6, 10, 0.72); z-index: 6; padding: 16px; }
+#story-card .card { max-width: 420px; width: 100%; background: #0e1612; border: 2px solid #6fd3e8; border-radius: 16px; padding: 18px 20px; text-align: center;
+  box-shadow: 0 0 40px rgba(111, 211, 232, 0.35); color: #e8f4ee; }
+#story-card .art { font-size: 54px; line-height: 1.1; margin-bottom: 6px; }
+#story-card .art .plate { display: inline-block; padding: 10px 16px; border-radius: 6px; font: bold 18px ui-monospace, Consolas, monospace; letter-spacing: 0.12em;
+  color: #2b3540; background: linear-gradient(135deg, #d9e2e8, #8e9aa4 55%, #c5ced5); box-shadow: inset 0 0 0 2px #6c7781, 0 0 18px rgba(125, 249, 255, 0.6); transform: rotate(-4deg); }
+#story-card h3 { margin: 6px 0; color: #7df9ff; letter-spacing: 0.06em; }
+#story-card .body { font-size: 16px; line-height: 1.45; margin: 8px 0 14px; }
 @keyframes toast { 0% { opacity: 0; transform: translateY(-10px); } 8%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; } }
 
 #vignette { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.4s;
@@ -186,6 +197,10 @@ body.touch .desktop-only { display: none; }
 #intro-phone .err { display: none; color: #ff4d5e; font-weight: bold; font-size: 16px; animation: flicker 0.4s infinite; }
 #intro-phone .err small { font-size: 10px; }
 #intro-phone.error .err { display: block; }
+#intro-phone .msg { min-height: 1.3em; font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: #9dffb0; letter-spacing: 0.04em;
+  white-space: nowrap; overflow: hidden; max-width: 100%; text-shadow: 0 0 6px rgba(120, 255, 150, 0.6); }
+#intro-phone .msg.type { animation: typeIn 0.9s steps(30, end); }
+@keyframes typeIn { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 #intro-phone.error .seq, #intro-phone.error .hint { display: none; }
 #intro-phone.error { animation: shake 0.12s infinite; }
 @keyframes shake { 0% { margin-left: -3px; } 50% { margin-left: 3px; } 100% { margin-left: -2px; } }

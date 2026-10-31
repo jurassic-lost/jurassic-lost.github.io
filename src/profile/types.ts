@@ -95,6 +95,8 @@ export interface GameSave {
   specialItems: string[];
   constructions: Construction[];
   companion: CompanionState;
+  /** Historia (capítulo 1 en adelante). Las partidas anteriores no lo tienen: se crea vacío. */
+  story?: import('../story/Story').StoryState;
   world: {
     region: string;
     pos: [number, number, number];

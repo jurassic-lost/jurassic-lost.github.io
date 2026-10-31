@@ -186,7 +186,9 @@ export class Environment {
     }
   }
 
+  private viewDist = 240;
   setViewDistance(d: number) {
+    this.viewDist = d;
     const fog = this.scene.fog as THREE.Fog;
     fog.near = d * 0.15;
     fog.far = d;
@@ -194,7 +196,7 @@ export class Environment {
 
   /**
    * Ajusta sol, luna, cielo, niebla y luces a la hora del día. La noche es azulada
-   * y bastante clara para que se pueda seguir jugando sin miedo.
+   * y oscura (con niebla que se acerca), pero siempre se distingue el suelo cercano.
    */
   setTime(c: Clock) {
     const D = THREE.MathUtils.degToRad;
@@ -215,13 +217,16 @@ export class Environment {
     const sunCol = new THREE.Color('#fff0d0').lerp(new THREE.Color('#ff9a52'), dusk * 0.8);
     const moonCol = new THREE.Color('#a9bcff');
     this.sun.color.copy(moonCol).lerp(sunCol, day);
-    this.sun.intensity = THREE.MathUtils.lerp(0.9, 3.2, day) * (1 - dusk * 0.35);
+    this.sun.intensity = THREE.MathUtils.lerp(0.6, 3.2, day) * (1 - dusk * 0.35);
     this.hemi.color.set('#5a6f9e').lerp(new THREE.Color('#cfe6ff'), day);
     this.hemi.groundColor.set('#1f2a22').lerp(new THREE.Color('#4d5a2c'), day);
-    this.hemi.intensity = THREE.MathUtils.lerp(0.9, 1.6, day);
+    this.hemi.intensity = THREE.MathUtils.lerp(0.62, 1.6, day);
 
     const fog = this.scene.fog as THREE.Fog;
-    fog.color.set('#1d2a40').lerp(new THREE.Color('#a8c2cc'), day).lerp(new THREE.Color('#d8a986'), dusk * 0.45 * day);
+    // De noche la niebla se acerca: lo que hay a lo lejos se pierde en la oscuridad.
+    fog.near = this.viewDist * THREE.MathUtils.lerp(0.06, 0.15, day);
+    fog.far = this.viewDist * THREE.MathUtils.lerp(0.5, 1, day);
+    fog.color.set('#141d2e').lerp(new THREE.Color('#a8c2cc'), day).lerp(new THREE.Color('#d8a986'), dusk * 0.45 * day);
     (this.scene.background as THREE.Color).copy(fog.color);
     const bd = 0.25 + day * 0.75;
     for (const m of this.backdropMats) m.color.setRGB(bd * (1 - dusk * 0.05), bd * (1 - dusk * 0.15), bd * (1 - dusk * 0.25) + (1 - day) * 0.08);

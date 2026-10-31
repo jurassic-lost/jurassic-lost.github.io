@@ -1,0 +1,62 @@
+// Crea una partida con la versión anterior y la abre con la nueva (mismo origen).
+const { chromium } = require('playwright');
+const { spawn } = require('child_process');
+const fs = require('fs');
+const ARGS = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'];
+const serve = (dir) => { const p = spawn('python3', ['-m', 'http.server', '5190', '-d', dir], { stdio: 'ignore' }); return new Promise((r) => setTimeout(() => r(p), 1500)); };
+const results = []; const check = (n, ok, x = '') => { results.push(ok); console.log(`${ok ? 'OK  ' : 'FALLA'} ${n}${x ? ' — ' + x : ''}`); };
+(async () => {
+  const dir = fs.mkdtempSync('/tmp/jl-old-');
+  let srv = await serve('/tmp/claude-0/old/dist');
+  let ctx = await chromium.launchPersistentContext(dir, { args: ARGS, viewport: { width: 1280, height: 760 } });
+  let page = ctx.pages()[0];
+  await page.goto('http://localhost:5190/');
+  await page.evaluate(() => localStorage.setItem('jurassic-lost-settings-v1', JSON.stringify({ quality: 'low' })));
+  await page.reload();
+  await page.waitForSelector('#menu-buttons:not(.hidden)', { timeout: 120000 });
+  await page.click('#btn-new'); await page.fill('#cr-name', 'Viejo_Max'); await page.click('#cr-confirm'); await page.waitForTimeout(400); await page.click('#cr-start');
+  await page.waitForTimeout(1500); await page.evaluate(() => document.getElementById('intro-skip').click());
+  await page.waitForFunction(() => window.game.playing === true, null, { timeout: 60000 });
+  const before = await page.evaluate(async () => {
+    const g = window.game, b = g.buildings;
+    for (const [id, v] of [['explore', 15], ['wood', 5], ['stone', 5], ['water', 1], ['dino', 1]]) g.objectives.set(id, v);
+    g.player.spawn(6, -6); b.startPlacing();
+    for (let i = 0; i < 32 && !b.valid; i++) b.updateGhost(g.player.position, (i / 32) * Math.PI * 2);
+    b.import([{ id: 'old', type: 'shelter', pos: [b.ghostPos.x, b.ghostPos.y, b.ghostPos.z], rotation: b.ghostRot, state: 'built', storage: {} }]);
+    b.cancelPlacing();
+    for (const [id, v] of [['shelter_wood', 10], ['shelter_leaves', 6], ['shelter_fiber', 4], ['build_shelter', 1], ['sleep', 1]]) g.objectives.set(id, v);
+    g.inventory.add('wood', 7); g.inventory.add('stone', 3); g.inventory.add('spear', 1);
+    g.session.save.stats.xp += 50;
+    await g.save('exit');
+    return { inv: g.inventory.toJSON(), xp: g.session.save.stats.xp, shelters: b.export().length, missions: g.objectives.completedMissions(), allDone: g.objectives.allDone, hasStory: 'story' in g.session.save };
+  });
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => window.game.setPaused(true));
+  await page.waitForTimeout(2000);
+  console.log('Versión anterior:', JSON.stringify(before));
+  await ctx.close(); srv.kill();
+
+  srv = await serve('/tmp/claude-0/new-dist');
+  ctx = await chromium.launchPersistentContext(dir, { args: ARGS, viewport: { width: 1280, height: 760 } });
+  page = ctx.pages()[0];
+  const errors = []; page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto('http://localhost:5190/?nueva=1'); // evita la caché del index.html anterior
+  await page.waitForSelector('#menu-buttons:not(.hidden)', { timeout: 120000 });
+  const welcome = await page.textContent('#welcome');
+  check('El perfil antiguo sigue en el menú', welcome.includes('Viejo_Max'), welcome.replace(/\s+/g, ' ').slice(0, 80));
+  await page.click('#btn-continue >> visible=true');
+  await page.waitForFunction(() => window.game.playing === true, null, { timeout: 60000 });
+  await page.waitForTimeout(1500);
+  const after = await page.evaluate(() => { const g = window.game; return { inv: g.inventory.toJSON(), xp: g.session.save.stats.xp, shelters: g.buildings.export().length, built: g.buildings.shelters[0]?.built, missions: g.objectives.completedMissions(), current: g.objectives.current?.id, title: document.querySelector('#objective h3').textContent, story: g.story?.state ?? { flags: [], tracks: [] } }; });
+  console.log('Versión nueva:', JSON.stringify(after));
+  check('Se conserva el inventario', JSON.stringify(after.inv) === JSON.stringify(before.inv));
+  check('Se conserva la experiencia', after.xp >= before.xp);
+  check('Se conserva el refugio construido', after.shelters === 1 && after.built);
+  check('Se conservan las misiones completadas', ['primeros_pasos', 'refugio'].every((m) => after.missions.includes(m)));
+  check('Continúa con la misión nueva «Algo ronda en la noche»', after.current === 'huellas', after.title);
+  check('La historia empieza vacía (sin errores)', after.story.flags.length === 0 && after.story.tracks.length === 0);
+  check('Sin errores de JavaScript', errors.length === 0, errors.join(' | '));
+  await ctx.close(); srv.kill();
+  console.log(`\n${results.filter(Boolean).length}/${results.length}`);
+  process.exit(0);
+})().catch((e) => { console.error(e); process.exit(1); });

@@ -31,9 +31,24 @@ export interface SpeciesConfig {
   bodyHeight: number;
   /** Amigo del jugador: nunca ataca ni se le puede vencer. */
   friendly?: boolean;
+  /**
+   * Cómo reacciona al ver al jugador:
+   * - apex: ruge y carga (tiranosaurio).
+   * - stalker: acecha a distancia, rodeándote, y luego ataca (depredadores medianos).
+   * - territorial: avisa (bufa y pisotea); si no te alejas, embiste (triceratops, estegosaurio).
+   * - gentle: gigante tranquilo; solo avisa si te metes bajo sus patas (apatosaurio).
+   * - skittish: da la alarma y huye; si lo arrinconas o lo golpeas, se defiende (iguanodonte).
+   * - pack: grupito curioso que te sigue y, si te quedas cerca, te pica (compis).
+   */
+  temper?: Temper;
 }
 
-type State = 'idle' | 'walk' | 'alert' | 'avoid' | 'approach' | 'charge' | 'hunt' | 'stunned' | 'down';
+export type Temper = 'apex' | 'stalker' | 'territorial' | 'gentle' | 'skittish' | 'pack';
+
+type State = 'idle' | 'walk' | 'alert' | 'avoid' | 'approach' | 'charge' | 'hunt' | 'stunned' | 'down' | 'warn' | 'stalk';
+
+/** Qué acaba de pasar al alertarse (para elegir el sonido y el aviso en pantalla). */
+export type AlertKind = 'hunt' | 'warn' | 'stalk' | 'flee' | 'look';
 
 /**
  * Dinosaurio con IA básica de estados: reposo/pastar, patrulla entre puntos,
@@ -41,7 +56,13 @@ type State = 'idle' | 'walk' | 'alert' | 'avoid' | 'approach' | 'charge' | 'hunt
  * Evita árboles, rocas, agua profunda y pendientes fuertes.
  */
 export class Dinosaur {
+  /** De noche los depredadores ven y oyen más lejos (lo fija el juego cada fotograma). */
+  static night = 0;
+  /** Ruido del jugador: 1 andando, más alto corriendo (lo fija el juego). */
+  static noise = 1;
   readonly rig: DinoRig;
+  alertKind: AlertKind = 'hunt';
+  private stalkSide = 1;
   readonly position = new THREE.Vector3();
   heading = 0;
   state: State = 'idle';
@@ -114,13 +135,21 @@ export class Dinosaur {
       this.onDefeated?.(this);
       return true;
     }
-    // Todos se defienden: tras el golpe persiguen al jugador.
+    // Todos se defienden: tras el golpe persiguen al jugador (el gigante tranquilo, solo un rato).
     this.state = 'stunned';
     this.timer = 0.35;
     this.afterStun = 'hunt';
-    this.chargeTime = 14;
+    this.chargeTime = this.temper === 'gentle' || this.temper === 'skittish' ? 7 : 14;
+    this.alertKind = 'hunt';
     return false;
   }
+
+  get temper(): Temper { return this.cfg.temper ?? (this.cfg.reaction === 'hunt' ? 'apex' : 'territorial'); }
+  get predator() { return this.cfg.reaction === 'hunt'; }
+  /** Acechando o cazando al jugador. */
+  get threatening() { return this.state === 'hunt' || this.state === 'charge' || this.state === 'stalk'; }
+
+  private alert(kind: AlertKind) { this.alertKind = kind; this.onAlert?.(this); }
 
   /** Vida restante (0..1) para la barra en pantalla. */
   get hpFraction() { return this.cfg.hp === Infinity ? 1 : Math.max(0, this.hp / this.cfg.hp); }
@@ -181,17 +210,35 @@ export class Dinosaur {
     if (this.down) { this.updateDown(dt, player); return; }
     const dx = player.x - this.position.x, dz = player.z - this.position.z;
     const distPlayer = Math.hypot(dx, dz);
-    const perceives = distPlayer < this.cfg.perception * playerStealth;
+    // Los depredadores ven y oyen más de noche; los herbívoros duermen y perciben menos.
+    const nightMul = this.predator ? 1 + Dinosaur.night * 0.3 : 1 - Dinosaur.night * 0.25;
+    const sense = this.cfg.perception * playerStealth * nightMul * (playerStealth > 0.9 ? Dinosaur.noise : 1);
+    const perceives = distPlayer < sense;
+    const temper = this.temper;
 
     this.attackCooldown -= dt;
     this.flash -= dt;
     const homeDist = Math.hypot(this.position.x - this.home.x, this.position.z - this.home.y);
     // Transiciones de estado según distancia y estado interno.
-    if (this.state === 'stunned' || this.state === 'charge' || this.state === 'hunt') {
+    if (this.state === 'stunned' || this.state === 'charge' || this.state === 'hunt' || this.state === 'warn' || this.state === 'stalk') {
       // Estados de combate: se gestionan abajo.
-    } else if (!this.cfg.friendly && perceives && playerStealth > 0 && homeDist < 110) {
-      // Todos los dinosaurios atacan si ven al jugador (menos el amigo).
-      if (this.state !== 'alert') { this.state = 'alert'; this.timer = 1.2 + this.rand() * 0.8; this.afterStun = 'hunt'; this.chargeTime = 14; this.onAlert?.(this); }
+    } else if (!this.cfg.friendly && perceives && playerStealth > 0 && homeDist < 110 && this.state !== 'alert') {
+      // Cada especie reacciona a su manera (menos el amigo).
+      this.chargeTime = 14;
+      if (temper === 'apex') {
+        this.state = 'alert'; this.timer = 1.2 + this.rand() * 0.8; this.afterStun = 'hunt'; this.alert('hunt');
+      } else if (temper === 'stalker' || temper === 'pack') {
+        this.state = 'stalk'; this.timer = temper === 'pack' ? 6 + this.rand() * 6 : 5 + this.rand() * 5;
+        this.stalkSide = this.rand() < 0.5 ? -1 : 1; this.alert('stalk');
+      } else if (temper === 'territorial' || (temper === 'gentle' && distPlayer < this.cfg.personal * 1.3)) {
+        this.state = 'warn'; this.timer = temper === 'gentle' ? 2.5 : 3.5; this.roar(1.1); this.alert('warn');
+      } else if (temper === 'skittish' && this.state !== 'avoid') {
+        if (distPlayer < this.cfg.personal * 0.8) { this.state = 'warn'; this.timer = 1.2; this.roar(0.8); this.alert('warn'); }
+        else if (this.pickGoal(player, 22)) { this.state = 'avoid'; this.timer = 9; this.alert('flee'); }
+      } else if (temper === 'gentle' && (this.state === 'idle' || this.state === 'walk') && this.timer < 6) {
+        // Te mira con calma y sigue a lo suyo.
+        this.state = 'alert'; this.timer = 2.5 + this.rand() * 2; this.afterStun = 'idle';
+      }
     } else if (distPlayer < this.cfg.personal && this.state !== 'avoid') {
       if (this.pickGoal(player)) { this.state = 'avoid'; this.timer = 8; }
     } else if (perceives && this.cfg.behavior === 'curious' && (this.state === 'idle' || this.state === 'walk') && distPlayer > this.cfg.personal + 2) {
@@ -201,7 +248,7 @@ export class Dinosaur {
     } else if (perceives && (this.state === 'idle' || this.state === 'walk') && this.timer < 6) {
       this.state = 'alert';
       this.timer = 2.5 + this.rand() * 2;
-      this.onAlert?.(this);
+      this.alert('look');
     }
 
     let desiredSpeed = 0;
@@ -223,9 +270,37 @@ export class Dinosaur {
         if (this.timer <= 0) {
           this.state = this.afterStun;
           this.timer = this.state === 'avoid' ? 10 : this.chargeTime;
-          if (this.state !== 'avoid') this.onAlert?.(this);
+          if (this.state !== 'avoid') this.alert('hunt');
         }
         break;
+      case 'warn': {
+        // Aviso: te encara, bufa y pisotea. Si te alejas, se calma; si no, embiste.
+        desiredHeading = Math.atan2(dx, dz);
+        desiredSpeed = Math.sin(this.time * 9) > 0.6 ? 0.6 : 0;
+        if (distPlayer > sense * 1.15 || playerStealth === 0) { this.state = 'idle'; this.timer = 6 + this.rand() * 4; this.afterStun = 'idle'; break; }
+        if (this.timer <= 0 || distPlayer < this.cfg.personal * 0.7) {
+          this.state = 'hunt'; this.chargeTime = this.timer = temper === 'territorial' ? 8 : 5; this.afterStun = 'hunt';
+          this.alert('hunt');
+        }
+        break;
+      }
+      case 'stalk': {
+        // Acecho: te rodea a cierta distancia, en silencio, y de pronto ataca.
+        const lost = distPlayer > this.cfg.perception * 1.8 || playerStealth === 0 || homeDist > 120;
+        if (lost) { this.state = 'walk'; this.timer = 25; this.afterStun = 'idle'; this.goal.copy(this.home); break; }
+        const keep = temper === 'pack' ? 4.5 : 14;
+        const a = Math.atan2(-dx, -dz) + this.stalkSide * 0.5;
+        const tx = player.x + Math.sin(a) * keep, tz = player.z + Math.cos(a) * keep;
+        const tdx = tx - this.position.x, tdz = tz - this.position.z, td = Math.hypot(tdx, tdz);
+        desiredSpeed = td > 1.5 ? this.cfg.walkSpeed * (temper === 'pack' ? 1.6 : 1.1) : 0;
+        desiredHeading = td > 1.5 ? this.steer(Math.atan2(tdx, tdz)) : Math.atan2(dx, dz);
+        if (Number.isNaN(desiredHeading)) desiredHeading = Math.atan2(dx, dz);
+        if (this.timer <= 0 || distPlayer < keep * 0.55) {
+          this.state = 'hunt'; this.timer = this.chargeTime = temper === 'pack' ? 4 : 14; this.afterStun = 'hunt';
+          this.alert('hunt');
+        }
+        break;
+      }
       case 'charge':
       case 'hunt': {
         // Persigue al jugador; si lo alcanza, embiste o muerde y retrocede un momento.
@@ -290,6 +365,34 @@ export class Dinosaur {
     const prevStep = Math.floor(this.phase / Math.PI);
     this.animate(dt, perceives ? Math.atan2(dx, dz) : null);
     if (Math.floor(this.phase / Math.PI) !== prevStep && this.speed > 0.4) this.onStep?.(this, this.speed > this.cfg.walkSpeed * 1.3);
+  }
+
+  /**
+   * Movimiento guiado por la historia (eventos con guion): camina hacia un punto a la
+   * velocidad indicada y, al llegar, se queda mirando hacia `face`.
+   */
+  scripted(dt: number, gx: number, gz: number, speed: number, face?: THREE.Vector3) {
+    this.time += dt;
+    const dx = gx - this.position.x, dz = gz - this.position.z, d = Math.hypot(dx, dz);
+    const moving = d > 0.8;
+    let want = moving ? Math.atan2(dx, dz) : face ? Math.atan2(face.x - this.position.x, face.z - this.position.z) : this.heading;
+    if (moving) { const a = this.steer(want); if (!Number.isNaN(a)) want = a; }
+    this.heading = lerpAngle(this.heading, want, Math.min(1, this.cfg.turnRate * dt));
+    this.speed = damp(this.speed, moving ? speed : 0, 3, dt);
+    const nx = this.position.x + Math.sin(this.heading) * this.speed * dt;
+    const nz = this.position.z + Math.cos(this.heading) * this.speed * dt;
+    if (this.terrain.waterDepthAt(nx, nz) < 0.5) { this.position.x = nx; this.position.z = nz; }
+    this.position.y = damp(this.position.y, this.terrain.heightAt(this.position.x, this.position.z), 10, dt);
+    const prevStep = Math.floor(this.phase / Math.PI);
+    this.animate(dt, face ? Math.atan2(face.x - this.position.x, face.z - this.position.z) : null);
+    if (Math.floor(this.phase / Math.PI) !== prevStep && this.speed > 0.4) this.onStep?.(this, false);
+  }
+
+  /** Coloca al dinosaurio en un punto (para eventos de la historia). */
+  placeAt(x: number, z: number, heading: number) {
+    this.position.set(x, this.terrain.heightAt(x, z), z);
+    this.heading = heading;
+    this.speed = 0;
   }
 
   /** Busca una dirección libre cerca de la deseada (evitación de obstáculos). */

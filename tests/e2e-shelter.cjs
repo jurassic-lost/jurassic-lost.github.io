@@ -158,6 +158,8 @@ const setHour = (page, h) => page.evaluate((h) => {
     return { name: d.cfg.name, state: d.state };
   });
   check('Un depredador cercano no te ve dentro del refugio', !['alert', 'hunt', 'charge'].includes(safe.state), JSON.stringify(safe));
+  // (La visita nocturna del depredador tiene su propia prueba: aquí se da por vivida.)
+  await page.evaluate(() => window.game.story.state.flags.push('night_visit'));
   await page.evaluate(() => window.game.input.press('interact'));
   await page.waitForTimeout(800);
   await page.screenshot({ path: `${SHOTS}/s7-durmiendo.png` });
@@ -166,7 +168,7 @@ const setHour = (page, h) => page.evaluate((h) => {
   const woke = await page.evaluate(() => ({ clock: document.getElementById('clock').textContent, e: window.game.survival.energy, h: window.game.survival.health, obj: window.game.objectives.missions[1].list.find((o) => o.id === 'sleep').done }));
   check('Despierta al amanecer del día 2', /Día 2 · 06:/.test(woke.clock), woke.clock);
   check('Dormir recupera energía y salud', woke.e === 100 && woke.h >= 89, JSON.stringify(woke));
-  check('Completa la misión "Un lugar seguro"', woke.obj && (await page.evaluate(() => window.game.objectives.allDone)));
+  check('Completa la misión "Un lugar seguro"', woke.obj && (await page.evaluate(() => window.game.objectives.completedMissions().includes('refugio'))));
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${SHOTS}/s8-amanecer.png` });
 
@@ -186,7 +188,7 @@ const setHour = (page, h) => page.evaluate((h) => {
   const after = await page.evaluate(() => ({ t: window.game.gameTime, n: window.game.buildings.shelters.length, p: window.game.buildings.shelters[0]?.data.pos, built: window.game.buildings.shelters[0]?.built, title: document.querySelector('#objective h3').textContent, clock: document.getElementById('clock').textContent }));
   check('Recupera el refugio guardado', after.n === 1 && after.built && Math.hypot(after.p[0] - before.p[0], after.p[2] - before.p[2]) < 0.01, JSON.stringify(after));
   check('Recupera la hora del mundo', Math.abs(after.t - before.t) < 3 && after.clock.includes('Día 2'), `${before.t.toFixed(0)} → ${after.t.toFixed(0)} · ${after.clock}`);
-  check('Recupera las misiones completadas', after.title.includes('completadas'), after.title);
+  check('Recupera las misiones completadas (sigue con «Algo ronda en la noche»)', after.title.includes('Algo ronda en la noche'), after.title);
   check('Sin errores en la consola', page.errors.length === 0, page.errors.slice(0, 3).join(' | '));
   await ctx.close();
 

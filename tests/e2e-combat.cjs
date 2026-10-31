@@ -33,16 +33,36 @@ const check = (name, ok, extra = '') => { results.push({ name, ok }); console.lo
   await page.waitForFunction(() => window.game.playing === true, null, { timeout: 60000 });
   await page.waitForTimeout(1000);
 
-  // 1. Un herbívoro (triceratops) te ve y te persigue.
-  const seen = await page.evaluate(async () => {
-    const g = window.game, d = g.dinos.find((x) => x.cfg.name === 'Triceratops');
-    g.player.spawn(d.position.x + 9, d.position.z + 9);
+  // 1. Cada especie reacciona a su manera.
+  const react = (name, dist, waitFor) => page.evaluate(async ([name, dist, waitFor]) => {
+    const g = window.game, d = g.dinos.find((x) => x.cfg.name === name);
+    g.player.spawn(d.position.x + dist, d.position.z + dist * 0.3);
     g.cam.snap();
+    d.state = 'idle'; d.timer = 3;
+    const seq = [];
     const t0 = performance.now();
-    while (performance.now() - t0 < 25000 && !['alert', 'hunt'].includes(d.state)) await new Promise((r) => setTimeout(r, 200));
+    while (performance.now() - t0 < 25000 && !waitFor.includes(d.state)) {
+      if (seq[seq.length - 1] !== d.state) seq.push(d.state);
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    seq.push(d.state);
+    return seq;
+  }, [name, dist, waitFor]);
+  const tri = await react('Triceratops', 8, ['warn', 'hunt']);
+  check('El triceratops primero te advierte (bufa y pisotea)', tri[tri.length - 1] === 'warn', tri.join('→'));
+  const tri2 = await page.evaluate(async () => {
+    const d = window.game.dinos.find((x) => x.cfg.name === 'Triceratops');
+    d.timer = 0; // se acaba el aviso y sigues ahí
+    await new Promise((r) => setTimeout(r, 1500));
     return d.state;
   });
-  check('Un triceratops te ve y va a por ti', ['alert', 'hunt'].includes(seen), seen);
+  check('Si no te alejas, el triceratops embiste', tri2 === 'hunt', tri2);
+  const igu = await react('Iguanodonte', 12, ['avoid', 'warn', 'hunt']);
+  check('El iguanodonte da la alarma y huye', igu[igu.length - 1] === 'avoid', igu.join('→'));
+  const pred = await page.evaluate(() => window.game.dinos.find((x) => x.cfg.temper === 'stalker').cfg.name);
+  const st = await react(pred, 16, ['stalk', 'hunt']);
+  check(`El ${pred.toLowerCase()} te acecha antes de atacar`, st[st.length - 1] === 'stalk', st.join('→'));
+  await page.evaluate(() => { for (const d of window.game.dinos) { if (d.state !== 'down') { d.state = 'idle'; d.timer = 5; } } window.game.player.spawn(0, 0); });
 
   // 2. Golpes necesarios según el tamaño (con el garrote, 12 de daño).
   const hits = await page.evaluate(() => {

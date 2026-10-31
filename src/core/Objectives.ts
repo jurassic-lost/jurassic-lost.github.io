@@ -30,6 +30,20 @@ export const MISSIONS = (): Mission[] => [
       { id: 'sleep', text: () => 'Duerme en tu refugio', target: 1, progress: 0, done: false },
     ],
   },
+  {
+    id: 'huellas', title: 'Algo ronda en la noche', list: [
+      { id: 'night_visit', text: () => 'Pasa la noche en tu refugio', target: 1, progress: 0, done: false },
+      { id: 'tracks', text: () => 'Examina las huellas junto al refugio', target: 1, progress: 0, done: false },
+      { id: 'cronos', text: () => 'Recoge la pieza metálica que brilla', target: 1, progress: 0, done: false },
+      { id: 'follow_tracks', text: () => 'Sigue el rastro de huellas hasta donde termina', target: 1, progress: 0, done: false },
+    ],
+  },
+  {
+    // Capítulo 2 (en preparación): el encuentro con Kiro.
+    id: 'kiro', title: 'Una voz entre los helechos', list: [
+      { id: 'kiro_meet', text: () => 'Busca a la criatura que chilla (capítulo 2, muy pronto)', target: 1, progress: 0, done: false },
+    ],
+  },
 ];
 
 export class Objectives {

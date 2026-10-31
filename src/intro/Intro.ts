@@ -38,7 +38,12 @@ export class Intro {
       [0.6, () => this.caption('Una noche cualquiera, en su cuarto…')],
       [3.6, () => this.caption('…encontró en su computadora un juego que nadie conocía.')],
       [6.2, () => { this.caption(''); phone.classList.add('show'); a.beep(520, 0.2); }],
+      [6.8, () => this.screenMsg('> conexión desconocida…')],
       [7.4, () => phone.classList.add('hint')],
+      [8.0, () => this.screenMsg('> ¿HAY ALGUIEN AHÍ?')],
+      [9.9, () => { this.screenMsg('> NO DEBERÍAS HABER ENCONTRADO ESTE JUEGO'); a.signal(0.08); }],
+      [11.2, () => this.screenMsg('> PROYECTO CRONOS · SUJETO 047 LOCALIZADO')],
+      [12.3, () => this.screenMsg('> no estás solo')],
       ...SEQUENCE.map((_, i) => [8.2 + i * 0.6, () => { keys[i].classList.add('on'); a.beep(600 + i * 120); }] as [number, () => void]),
       [11.9, () => { phone.classList.add('error'); a.beep(220, 0.5, 0.15); }],
       [12.9, () => { phone.classList.remove('show'); $('intro').classList.add('glitch'); a.anomaly(3.8); this.caption('¿Qué está pasando…?'); }],
@@ -51,6 +56,13 @@ export class Intro {
       [25.6, () => $('intro-title').classList.remove('show')],
       [END, () => this.finish()],
     ];
+  }
+
+  /** Mensaje misterioso que aparece escrito en el monitor. */
+  private screenMsg(text: string) {
+    const el = $('intro-phone').querySelector('.msg') as HTMLElement;
+    el.textContent = text;
+    el.classList.remove('type'); void el.offsetWidth; el.classList.add('type');
   }
 
   private caption(text: string) {
@@ -149,6 +161,7 @@ export class Intro {
     ['intro-flash', 'intro-title', 'intro-caption'].forEach((id) => $(id).classList.remove('on', 'show'));
     $('intro-phone').classList.remove('show', 'hint', 'error');
     $('intro-phone').querySelectorAll('.on').forEach((s) => s.classList.remove('on'));
+    ($('intro-phone').querySelector('.msg') as HTMLElement).textContent = '';
     this.onDone();
   }
 }

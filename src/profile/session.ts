@@ -64,6 +64,7 @@ export class PlayerSession {
     Object.assign(game.survival, s.survival);
     if (game.survival.health < 20) game.survival.health = 20;
     game.collectibles.importDepleted(s.world.depleted ?? []);
+    game.story.load(s.story);
     const [x, , z] = s.world.pos;
     const [sx, sz] = s.world.lastSafe;
     if (PlayerSession.safeSpot(game, x, z)) game.player.spawn(x, z);
@@ -89,6 +90,7 @@ export class PlayerSession {
     s.world.facing = game.player.facing;
     s.world.region = regionAt(p.x, p.z).id;
     s.world.depleted = game.collectibles.exportDepleted();
+    s.story = game.story.export();
     s.stats.daysSurvived = daysSurvived(s.world.gameTime);
   }
 
@@ -136,7 +138,7 @@ export class PlayerSession {
     this.safeT += dt;
     if (this.safeT > 2) {
       this.safeT = 0;
-      const hunted = game.dinos.some((d) => (d.state === 'hunt' || d.state === 'charge') && d.position.distanceTo(p) < 40);
+      const hunted = game.dinos.some((d) => d.threatening && d.position.distanceTo(p) < 40);
       if (game.player.grounded && !game.player.inWater && !hunted && PlayerSession.safeSpot(game, p.x, p.z)) s.world.lastSafe = [p.x, p.z];
     }
 

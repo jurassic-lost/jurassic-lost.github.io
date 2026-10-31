@@ -139,3 +139,15 @@ No se ha medido el rendimiento en un celular físico.
 - **Selva**: lianas con hojas que cuelgan de las copas casi hasta el suelo, raíces tabulares y raíces superficiales en los árboles gigantes, contrafuertes en los árboles de la selva y **senderos de tierra** que serpentean por el mapa (sin árboles encima).
 - **Rayos de sol** más anchos y numerosos (10/22/30 según la calidad) y tres pterosaurios que vuelan más bajos.
 - Las hojas de las lianas solo se dibujan cerca (distancia de decoración), para no perder rendimiento.
+
+## Capítulo 1 de la trama de terror: «Algo ronda en la noche»
+
+El miedo viene del sonido, la oscuridad y el comportamiento de los dinosaurios, sin sangre ni sustos bruscos.
+
+- **Introducción:** en el monitor del cuarto gamer aparecen mensajes misteriosos («¿HAY ALGUIEN AHÍ?», «PROYECTO CRONOS · SUJETO 047 LOCALIZADO», «no estás solo»). En la isla llegan mensajes sin remitente al celular (al despertar, al primer anochecer, al recoger la pieza y al final del rastro).
+- **Noches de terror:** noche más oscura con niebla cercana, hojas que se mueven, ramas que crujen, gruñidos lejanos, pisadas que se acercan y se detienen, ojos que brillan un momento entre los árboles. Si un depredador te acecha cerca, los grillos se callan, sube un zumbido grave y se oye el corazón.
+- **Cada especie reacciona a su manera** (`temper` en `species.ts`): el tiranosaurio ruge y carga; los depredadores medianos acechan rodeándote y luego atacan; el triceratops y el estegosaurio avisan (bufan y pisotean) y embisten si no te alejas; el apatosaurio es tranquilo y solo avisa si te metes bajo sus patas; el iguanodonte da la alarma y huye (se defiende si lo arrinconas); los compis te siguen en grupo y te pican si te quedas cerca. De noche los depredadores perciben más lejos y correr hace ruido. Todos se defienden si los golpeas y se les puede vencer como antes.
+- **Visita nocturna:** la primera noche que duermes en el refugio te despiertas de madrugada; un gran depredador se acerca, olfatea alrededor del refugio y se va. No ataca: si sales, te oye, gruñe y se aleja.
+- **Al amanecer:** huellas enormes junto al refugio y la pieza metálica **CRONOS-047** (objeto especial, con tarjeta). El rastro de huellas lleva a un lugar donde empiezan unas huellas diminutas y algo chilla entre los helechos: la misión «Una voz entre los helechos» prepara el encuentro con Kiro (capítulo 2).
+- **Partidas anteriores:** se conservan perfiles, inventario, construcciones y misiones; la historia empieza vacía y continúa con la misión nueva. Copia de seguridad del código anterior en la etiqueta `pre-terror`.
+- Código: `src/story/Story.ts` (guion, huellas, pieza, mensajes) y `src/story/NightAmbience.ts` (ambiente nocturno). Pruebas: `tests/e2e-story.cjs` (24 comprobaciones) y `tests/e2e-old-save.cjs` (abre con esta versión una partida creada con la anterior).

@@ -21,6 +21,9 @@ export class AudioManager {
   private dayBed!: GainNode;
   private daylight = 1;
   private nextNight = 1;
+  /** 0..1: los grillos y ranas se callan (señal de que algo grande anda cerca). */
+  private hushV = 0;
+  private drone: GainNode | null = null;
   muted = false;
 
   /** Debe llamarse tras un gesto del usuario (requisito de los navegadores). */
@@ -98,7 +101,7 @@ export class AudioManager {
     this.daylight = d;
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
-    this.night.gain.setTargetAtTime((1 - d) * 1, t, 1.5);
+    this.night.gain.setTargetAtTime((1 - d) * (1 - this.hushV), t, this.hushV > 0.5 ? 0.6 : 1.5);
     this.dayBed.gain.setTargetAtTime(0.3 + d * 0.7, t, 1.5);
   }
 
@@ -125,7 +128,7 @@ export class AudioManager {
     this.nextRumble -= dt;
     if (this.nextBird <= 0) { if (this.daylight > 0.3) this.bird(); this.nextBird = 2 + Math.random() * 6; }
     this.nextNight -= dt;
-    if (this.nextNight <= 0) { if (this.daylight < 0.4) this.frog(); this.nextNight = 1.5 + Math.random() * 4; }
+    if (this.nextNight <= 0) { if (this.daylight < 0.4 && this.hushV < 0.5) this.frog(); this.nextNight = 1.5 + Math.random() * 4; }
     if (this.nextRumble <= 0) { this.distantCall(); this.nextRumble = 40 + Math.random() * 50; }
   }
 
@@ -353,5 +356,124 @@ export class AudioManager {
     const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine';
     o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(50, t + 0.18);
     this.env(g, t, volume, 0.005, 0.2); o.connect(g).connect(this.sfx); o.start(t); o.stop(t + 0.25);
+  }
+
+  /** Silencio repentino de la selva (h = 1: no se oye ni un grillo). */
+  hush(h: number) {
+    h = Math.max(0, Math.min(1, h));
+    if (Math.abs(h - this.hushV) < 0.05) return;
+    this.hushV = h;
+    this.setDaylight(this.daylight);
+  }
+
+  /** Tensión: un zumbido muy grave y casi inaudible que sube cuando algo acecha (0..1). */
+  setTension(v: number) {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    if (!this.drone) {
+      this.drone = ctx.createGain(); this.drone.gain.value = 0; this.drone.connect(this.musicBus);
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 160; lp.connect(this.drone);
+      for (const [f, type] of [[41, 'sine'], [61.5, 'triangle'], [43.2, 'sine']] as const) {
+        const o = ctx.createOscillator(); o.type = type; o.frequency.value = f;
+        const g = ctx.createGain(); g.gain.value = type === 'sine' ? 0.5 : 0.18;
+        o.connect(g).connect(lp); o.start();
+      }
+    }
+    this.drone.gain.setTargetAtTime(Math.max(0, Math.min(1, v)) * 0.16, ctx.currentTime, 1.2);
+  }
+
+  private panned(pan: number) {
+    const p = this.ctx!.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan));
+    p.connect(this.sfx); p.connect(this.reverb);
+    return p;
+  }
+
+  /** Hojas que se mueven entre los arbustos (algo pasa cerca). */
+  rustle(volume = 0.2, pan = 0) {
+    if (!this.ctx || volume < 0.01) return;
+    const ctx = this.ctx, t = ctx.currentTime, out = this.panned(pan);
+    const n = 3 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < n; i++) {
+      const st = t + i * (0.07 + Math.random() * 0.12);
+      const src = ctx.createBufferSource(); src.buffer = this.noiseBuf;
+      const hp = ctx.createBiquadFilter(); hp.type = 'bandpass'; hp.frequency.value = 2200 + Math.random() * 2000; hp.Q.value = 0.8;
+      const g = ctx.createGain(); this.env(g, st, volume * (0.5 + Math.random() * 0.5), 0.01, 0.12 + Math.random() * 0.1);
+      src.connect(hp).connect(g).connect(out); src.start(st, Math.random() * 2); src.stop(st + 0.3);
+    }
+  }
+
+  /** Una rama seca que cruje bajo una pata. */
+  twig(volume = 0.25, pan = 0) {
+    if (!this.ctx || volume < 0.01) return;
+    const ctx = this.ctx, t = ctx.currentTime, out = this.panned(pan);
+    for (let i = 0; i < 2; i++) {
+      const st = t + i * 0.05;
+      const src = ctx.createBufferSource(); src.buffer = this.noiseBuf;
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1500;
+      const g = ctx.createGain(); this.env(g, st, volume * (i ? 0.6 : 1), 0.002, 0.05);
+      src.connect(hp).connect(g).connect(out); src.start(st, Math.random() * 2); src.stop(st + 0.08);
+    }
+  }
+
+  /** Olfateo de un animal grande: tres inspiraciones cortas y un resoplido. */
+  sniff(volume = 0.3, pan = 0) {
+    if (!this.ctx || volume < 0.01) return;
+    const ctx = this.ctx, t = ctx.currentTime, out = this.panned(pan);
+    for (let i = 0; i < 4; i++) {
+      const last = i === 3, st = t + i * 0.28 + (last ? 0.25 : 0);
+      const src = ctx.createBufferSource(); src.buffer = this.noiseBuf;
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.2;
+      bp.frequency.setValueAtTime(last ? 380 : 900, st); bp.frequency.linearRampToValueAtTime(last ? 220 : 1300, st + 0.2);
+      const g = ctx.createGain(); this.env(g, st, volume * (last ? 1.3 : 0.7), last ? 0.03 : 0.06, last ? 0.6 : 0.14);
+      src.connect(bp).connect(g).connect(out); src.start(st, Math.random() * 2); src.stop(st + (last ? 0.8 : 0.3));
+    }
+  }
+
+  /** Respiración lenta y profunda de un gran depredador. */
+  breathe(volume = 0.25, pan = 0) {
+    if (!this.ctx || volume < 0.01) return;
+    const ctx = this.ctx, t = ctx.currentTime, out = this.panned(pan);
+    const src = ctx.createBufferSource(); src.buffer = this.noiseBuf;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(250, t); lp.frequency.linearRampToValueAtTime(520, t + 0.9); lp.frequency.linearRampToValueAtTime(180, t + 2);
+    const g = ctx.createGain(); this.env(g, t, volume, 0.7, 1.4);
+    src.connect(lp).connect(g).connect(out); src.start(t, Math.random()); src.stop(t + 2.2);
+  }
+
+  /** Latido del corazón (dos golpes graves). */
+  heartbeat(volume = 0.2) {
+    if (!this.ctx || volume < 0.01) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    for (const [dt, v] of [[0, 1], [0.24, 0.7]] as const) {
+      const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine';
+      o.frequency.setValueAtTime(58, t + dt); o.frequency.exponentialRampToValueAtTime(38, t + dt + 0.15);
+      this.env(g, t + dt, volume * v, 0.01, 0.16); o.connect(g).connect(this.sfx); o.start(t + dt); o.stop(t + dt + 0.22);
+    }
+  }
+
+  /** Interferencia de radio y pitido: un mensaje misterioso llega al celular. */
+  signal(volume = 0.18) {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const src = ctx.createBufferSource(); src.buffer = this.noiseBuf;
+    const hp = ctx.createBiquadFilter(); hp.type = 'bandpass'; hp.frequency.value = 2600; hp.Q.value = 0.6;
+    const am = ctx.createOscillator(); am.type = 'square'; am.frequency.value = 9; const ag = ctx.createGain(); ag.gain.value = 0.5;
+    const g = ctx.createGain(); g.gain.value = 0.5; am.connect(ag).connect(g.gain);
+    const g2 = ctx.createGain(); this.env(g2, t, volume, 0.03, 0.9);
+    src.connect(hp).connect(g).connect(g2).connect(this.sfx); src.start(t, Math.random()); src.stop(t + 1); am.start(t); am.stop(t + 1);
+    for (const [dt, f] of [[0.95, 1320], [1.12, 990]] as const) {
+      const o = ctx.createOscillator(), og = ctx.createGain(); o.type = 'square'; o.frequency.value = f;
+      this.env(og, t + dt, volume * 0.35, 0.005, 0.12); o.connect(og).connect(this.sfx); o.start(t + dt); o.stop(t + dt + 0.15);
+    }
+  }
+
+  /** Chillido agudo y tímido de una criatura pequeña. */
+  chirp(volume = 0.2, pan = 0) {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime, out = this.panned(pan);
+    for (let i = 0; i < 3; i++) {
+      const st = t + i * 0.16, o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'triangle';
+      o.frequency.setValueAtTime(1100 + i * 140, st); o.frequency.exponentialRampToValueAtTime(1700 + i * 200, st + 0.07); o.frequency.exponentialRampToValueAtTime(900, st + 0.13);
+      this.env(g, st, volume, 0.01, 0.12); o.connect(g).connect(out); o.start(st); o.stop(st + 0.16);
+    }
   }
 }

@@ -23,6 +23,7 @@ import { SPAWN, WATER_LEVEL } from '../world/config';
 import { CollisionWorld } from './Collision';
 import { windTime } from './textures';
 import { Intro } from '../intro/Intro';
+import { Story } from '../story/Story';
 import { PostFX } from './PostFX';
 import { patchAtmosphere } from '../world/Atmosphere';
 import { PARTICLE_BUDGET, Particles } from '../world/Particles';
@@ -47,6 +48,8 @@ export class Game {
   readonly meat: MeatDrops;
   private meatFocus: Meat | null = null;
   readonly buildings: Buildings;
+  /** Historia (capítulo 1): visita nocturna, huellas, CRONOS-047 y mensajes del celular. */
+  readonly story: Story;
   readonly post: PostFX;
   readonly particles: Particles;
   private shake = 0;
@@ -112,6 +115,8 @@ export class Game {
     this.buildings = new Buildings(this.terrain, this.collisions);
     this.scene.add(this.buildings.group);
     this.buildings.onBuilt = (s) => this.onShelterBuilt(s);
+    this.story = new Story(this);
+    this.scene.add(this.story.group);
     this.particles = new Particles((x, z) => this.terrain.heightAt(x, z), PARTICLE_BUDGET.high);
     this.scene.add(this.particles.group);
     this.post = new PostFX(this.renderer, this.scene, this.camera);
@@ -169,26 +174,36 @@ export class Game {
   private addDino(cfg: Species, x: number, z: number, seed: number) {
     const d = new Dinosaur(cfg, x, z, this.terrain, this.collisions, seed);
     d.onAlert = (dd) => {
-      const dist = dd.position.distanceTo(this.player.position);
+      const dist = dd.position.distanceTo(this.player.position), pan = this.panOf(dd.position);
+      const name = cfg.name.toLowerCase(), kind = dd.alertKind;
+      const say = (msg: string, big = false) => {
+        if (!this.playing || performance.now() - this.trexWarned < 25000) return;
+        this.trexWarned = performance.now();
+        this.hud.toast(msg, big);
+      };
+      if (kind === 'look') { if (dist < 40) this.audio.snort(0.2 * (1 - dist / 40)); return; }
       if (cfg === TREX) {
         dd.roar();
         if (dist < 60) this.audio.roar(0.7 * (1 - dist / 60));
-        if (this.playing && performance.now() - this.trexWarned > 30000) {
-          this.trexWarned = performance.now();
-          this.hud.toast('🦖 ¡Un tiranosaurio te ha visto! Aguanta muchos golpes: lucha con tus mejores armas o escóndete.', true);
-        }
+        say('🦖 ¡Un tiranosaurio te ha visto! Aguanta muchos golpes: lucha con tus mejores armas o escóndete.', true);
+      } else if (kind === 'stalk') {
+        // El acecho casi no se oye: un gruñido bajo y hojas que se mueven.
+        if (dist < 45) { this.audio.dinoCall('growl', 0.18 * (1 - dist / 45), pan); this.audio.rustle(0.18, pan); }
+        say(cfg.temper === 'pack'
+          ? '🦎 Unos compis te siguen entre la hierba… si te quedas quieto cerca, te picarán.'
+          : `👀 Algo te observa… un ${name} te está acechando. Agáchate, aléjate o prepárate.`);
+      } else if (kind === 'warn') {
+        if (dist < 45) this.audio.snort(0.35 * (1 - dist / 45));
+        say(`⚠️ El ${name} te advierte: bufa y pisotea. ¡Aléjate o embestirá!`);
+      } else if (kind === 'flee') {
+        if (dist < 50) this.audio.dinoCall('honk', 0.3 * (1 - dist / 50), pan);
+        say(`El ${name} da la alarma y huye. Si lo arrinconas, se defenderá.`);
       } else if (cfg.reaction === 'hunt') {
         if (dist < 50) this.audio.roar(0.45 * (1 - dist / 50));
-        if (this.playing && performance.now() - this.trexWarned > 30000) {
-          this.trexWarned = performance.now();
-          this.hud.toast(`🦖 ¡Un ${cfg.name.toLowerCase()} te ha visto y viene a por ti! Defiéndete con tus armas.`, true);
-        }
+        say(`🦖 ¡El ${name} sale de su escondite y viene a por ti! Defiéndete con tus armas.`, true);
       } else {
-        if (dist < 40) this.audio.snort(0.25 * (1 - dist / 40));
-        if (this.playing && performance.now() - this.trexWarned > 30000) {
-          this.trexWarned = performance.now();
-          this.hud.toast(`¡El ${cfg.name.toLowerCase()} te ha visto y viene a por ti! Defiéndete 🏏`);
-        }
+        if (dist < 40) this.audio.snort(0.3 * (1 - dist / 40));
+        say(`¡El ${name} te embiste! Defiéndete 🏏 o corre.`);
       }
     };
     d.onAttackPlayer = (dd, dmg) => this.hurtPlayer(dd, dmg);
@@ -250,6 +265,8 @@ export class Game {
     this.objectives.onMissionComplete = (m, next) => {
       this.hud.toast(next ? `🏆 ¡${m.title} completado! Nueva misión: ${next.title}` : `🏆 ¡${m.title} completado!`, true);
       if (next?.id === 'refugio') setTimeout(() => this.hud.toast('🛖 Reúne materiales y abre 🛠 para construir un refugio. Allí podrás dormir a salvo.'), 2500);
+      if (next?.id === 'huellas' && !this.story.has('night_visit')) setTimeout(() => this.hud.toast('🌙 Cuando anochezca, duerme en tu refugio… y escucha con atención.'), 2500);
+      if (next?.id === 'kiro') setTimeout(() => this.hud.toast('🌿 Capítulo 2 muy pronto: ¿quién chilla entre los helechos?', true), 6000);
       this.session?.addXp(XP.mission, 'mission');
       // Los materiales que ya llevas cuentan para la nueva misión.
       for (const id of ['wood', 'stone', 'fiber', 'leaves'] as const) this.objectives.setItem(id, this.inventory.get(id));
@@ -368,6 +385,7 @@ export class Game {
     if (afterIntro) {
       setTimeout(() => this.hud.toast('SOBREVIVE. ENCUENTRA LA MANERA DE REGRESAR A CASA.', true), 400);
       setTimeout(() => this.hud.toast('📱 Tu celular dice: ERROR TEMPORAL'), 3800);
+      this.story.afterIntro();
     }
   }
 
@@ -454,6 +472,9 @@ export class Game {
     // Dentro de un refugio terminado los dinosaurios no te ven.
     const sheltered = !!this.buildings.insideShelter(pp);
     const stealth = sheltered || this.resting ? 0 : this.player.crouching ? 0.55 : 1;
+    // De noche los depredadores perciben más lejos; correr hace ruido.
+    Dinosaur.night = THREE.MathUtils.clamp((0.6 - this.env.daylight) / 0.5, 0, 1);
+    Dinosaur.noise = this.player.running ? 1.35 : 1;
     const lodDist = PRESETS[this.settings.quality].dinoLod;
     for (const d of this.dinos) {
       d.lodFar = d.position.distanceTo(this.camera.position) > lodDist;
@@ -477,6 +498,7 @@ export class Game {
 
     this.collectibles.update(dt, this.focus);
     this.meat.update(dt);
+    this.story.update(dt, Dinosaur.night, sheltered);
     this.updateBuilding(dt);
     this.updateTimeOfDay(false, dt);
     this.terrain.update(dt);
@@ -496,14 +518,14 @@ export class Game {
     this.hud.updateStats(this.survival);
     this.hud.drawMinimap(pp.x, pp.z, Math.PI - this.player.facing, this.dinos.filter((d) => !d.down).map((d) => ({
       x: d.position.x, z: d.position.z, color: (d.cfg as Species).map.color, size: (d.cfg as Species).map.size,
-    })).concat(this.buildings.shelters.map((s) => ({ x: s.position.x, z: s.position.z, color: '#ffcf4a', size: 4 }))));
+    })).concat(this.buildings.shelters.map((s) => ({ x: s.position.x, z: s.position.z, color: '#ffcf4a', size: 4 }))).concat(this.story.markers()));
     this.post.setMood(this.env.daylight, this.env.dusk);
     this.post.render(dt);
     if (this.settings.showFps) this.hud.tickFps(dt, `${this.renderer.info.render.calls} draws`);
 
     this.session?.tick(this, dt);
     // Postura de alerta si un depredador caza cerca.
-    this.player.model.danger = this.dinos.some((d) => (d.state === 'hunt' || d.state === 'charge') && d.position.distanceTo(pp) < 30) ? 1 : 0;
+    this.player.model.danger = this.dinos.some((d) => d.threatening && d.position.distanceTo(pp) < 30) ? 1 : 0;
   }
 
   private craft(i: number) {
@@ -603,13 +625,15 @@ export class Game {
   }
 
   get gameTime() { return this.session ? this.session.save.world.gameTime : this.localTime; }
-  private advanceTime(sec: number) {
+  /** Temblor de cámara (pisadas enormes). */
+  shakeCamera(v: number) { this.shake = Math.max(this.shake, v); }
+  advanceTime(sec: number) {
     if (this.session) this.session.save.world.gameTime += sec;
     else this.localTime += sec;
   }
 
   /** Luz, cielo y reloj según la hora; avisa al anochecer y al amanecer. */
-  private updateTimeOfDay(force: boolean, dt = 0) {
+  updateTimeOfDay(force: boolean, dt = 0) {
     if (!this.session) this.localTime += dt;
     this.envT += dt;
     if (!force && this.envT < 0.1) return;
@@ -624,6 +648,7 @@ export class Game {
       this.hud.toast(this.buildings.shelters.some((s) => s.built)
         ? '🌇 Está anocheciendo. Vuelve a tu refugio para dormir.'
         : '🌇 Está anocheciendo. Construye un refugio para pasar la noche a salvo.', true);
+      this.story.onDusk(c.day);
     }
     if (this.wasNight && !c.night && !this.resting) this.hud.toast(`🌅 ¡Amanece! Día ${c.day}`, true);
     this.wasNight = c.night;
@@ -636,8 +661,10 @@ export class Game {
 
   /** Descansa en un refugio: pasa el tiempo, recupera fuerzas y fija el punto seguro. */
   rest(home: Shelter) {
-    if (this.resting) return;
+    if (this.resting || this.story.visiting) return;
     const night = this.worldClock.night || this.worldClock.hour >= 17;
+    // La primera noche en el refugio, algo enorme se acerca…
+    if (this.story.shouldVisit(night)) { this.story.startVisit(home); return; }
     const skip = night ? secondsUntilHour(this.gameTime, 6.5) : Math.max(60, (hourToCycle(17.5) - this.worldClock.cycle) * DAY_SECONDS);
     this.resting = true;
     this.input.enabled = false;
@@ -736,6 +763,12 @@ export class Game {
       return;
     }
     if (this.resting) { this.hud.setPrompt(null); this.input.consume('interact'); return; }
+    if (this.story.visiting) { this.hud.setPrompt('Quédate quieto dentro del refugio…', '🤫'); this.input.consume('interact'); return; }
+    if (!this.focus && this.story.pieceNear(pp)) {
+      this.hud.setPrompt('Recoger la pieza metálica que brilla ✨', key);
+      if (!this.player.model.busy && this.input.consume('interact')) { this.player.model.playPickup(); void this.story.takePiece(); }
+      return;
+    }
     if (home && !this.focus) {
       this.hud.setPrompt(this.restLabel(), key);
       if (this.input.consume('interact') && !this.player.model.busy) this.rest(home);
