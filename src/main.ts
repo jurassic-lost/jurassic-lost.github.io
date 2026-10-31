@@ -32,11 +32,13 @@ async function boot() {
       location.reload();
     });
   }
-  if (quatErrors.length) {
+  // En el archivo único el tiranosaurio de bajo detalle no va incluido a propósito (se usa el realista): sin aviso.
+  const missing = (window as unknown as { __GLB?: unknown }).__GLB ? quatErrors.filter((e) => !e.includes('t-rex')) : quatErrors;
+  if (missing.length) {
     // Aviso visible (también en el menú) para saber por qué no salen los dinosaurios nuevos.
     const w = document.createElement('div');
     w.style.cssText = 'position:fixed;left:8px;bottom:8px;max-width:90vw;z-index:9999;background:#000c;color:#fc6;font:12px sans-serif;padding:6px 8px;border-radius:6px;pointer-events:none';
-    w.textContent = `⚠️ No se cargaron ${quatErrors.length} modelos de dinosaurio: ${quatErrors[0]}`;
+    w.textContent = `⚠️ No se cargaron ${missing.length} modelos de dinosaurio: ${missing[0]}`;
     document.body.appendChild(w);
     setTimeout(() => w.remove(), 30000);
   }

@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { fbm, lerp, smoothstep } from '../core/math';
 import { groundDetail, waterNormals } from '../core/textures';
 import { CLEARING, LAKE, WATER_LEVEL, WORLD_HALF, WORLD_SIZE } from './config';
+import { lavaDistance, volcanicAt, volcanoHeight } from './Volcano';
+import { featuresHeight, tarStain } from './Features';
 
 /** Colinas interiores fijas (x, z, radio, altura). */
 const HILLS: [number, number, number, number][] = [
@@ -29,6 +31,9 @@ export function sampleHeight(x: number, z: number): number {
   const edge = Math.max(Math.abs(x), Math.abs(z)) / WORLD_HALF;
   h += smoothstep(0.72, 1.0, edge) * (55 + fbm(x * 0.02, z * 0.02, 3) * 25);
 
+  // Volcán activo con cráter y cauces de lava (ver Volcano.ts).
+  h = volcanoHeight(x, z, h);
+
   // Claro inicial aplanado.
   const dc = Math.hypot(x - CLEARING.x, z - CLEARING.z);
   h = lerp(h, 3.2 + fbm(x * 0.05, z * 0.05, 2) * 0.4, 1 - smoothstep(CLEARING.radius * 0.6, CLEARING.radius * 1.6, dc));
@@ -40,7 +45,8 @@ export function sampleHeight(x: number, z: number): number {
   // Cauce del río (poco profundo: se puede vadear).
   const dr = Math.abs(x - riverX(z));
   h = lerp(WATER_LEVEL - 1.0, h, smoothstep(5, 20, dr));
-  return h;
+  // Charcas para beber y pozos de brea.
+  return featuresHeight(x, z, h);
 }
 
 /** Normal aproximada por diferencias finitas. */
@@ -85,6 +91,7 @@ export class Terrain {
     const dirt = new THREE.Color('#7d6440'), rock = new THREE.Color('#857f74');
     const sand = new THREE.Color('#c9b77f'), clearingDirt = new THREE.Color('#a88e66'), snowRock = new THREE.Color('#a39d90');
     const trailDirt = new THREE.Color('#8b6b45');
+    const basalt = new THREE.Color('#3b3532'), ash = new THREE.Color('#5d5652'), scorched = new THREE.Color('#5a2a14'), tar = new THREE.Color('#1c1612');
 
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), z = pos.getZ(i);
@@ -105,6 +112,13 @@ export class Terrain {
       if (tr > 0) c.lerp(trailDirt, tr * (0.75 + patch * 0.2));
       c.lerp(rock, smoothstep(0.55, 1.1, slope));
       c.lerp(snowRock, smoothstep(40, 70, h));
+      // Roca volcánica oscura con ceniza, orillas de la lava quemadas y manchas de brea.
+      const volc = volcanicAt(x, z);
+      if (volc > 0) c.lerp(basalt, volc * 0.9).lerp(ash, volc * Math.max(0, patch - 0.55));
+      const ld = volc > 0 || Math.abs(x + 205) < 110 ? lavaDistance(x, z).d : 99;
+      if (ld < 5) c.lerp(scorched, smoothstep(5, 0, ld) * 0.85);
+      const ts = tarStain(x, z);
+      if (ts > 0) c.lerp(tar, ts * 0.85);
       colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
     }
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));

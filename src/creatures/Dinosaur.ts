@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { damp, lerpAngle, rng } from '../core/math';
 import { CollisionWorld } from '../core/Collision';
 import { Terrain, sampleSlope } from '../world/Terrain';
+import { lavaDistance } from '../world/Volcano';
+import { tarAt } from '../world/Features';
 import { PLAY_LIMIT } from '../world/config';
 import { DinoRig } from './dinoModels';
 
@@ -185,6 +187,8 @@ export class Dinosaur {
     if (Math.abs(x) > PLAY_LIMIT - 5 || Math.abs(z) > PLAY_LIMIT - 5) return false;
     if (this.terrain.waterDepthAt(x, z) > 0.5) return false;
     if (sampleSlope(x, z) > 0.55) return false;
+    // La lava y la brea se evitan.
+    if (lavaDistance(x, z).d < 2.5 || tarAt(x, z) > 0) return false;
     return !this.collisions.blocked(x, z, this.cfg.radius * 0.8);
   }
 
@@ -382,11 +386,14 @@ export class Dinosaur {
     const nx = this.position.x + Math.sin(this.heading) * this.speed * dt;
     const nz = this.position.z + Math.cos(this.heading) * this.speed * dt;
     if (this.terrain.waterDepthAt(nx, nz) < 0.5) { this.position.x = nx; this.position.z = nz; }
-    this.position.y = damp(this.position.y, this.terrain.heightAt(this.position.x, this.position.z), 10, dt);
+    this.position.y = damp(this.position.y, this.terrain.heightAt(this.position.x, this.position.z) - this.sink, 10, dt);
     const prevStep = Math.floor(this.phase / Math.PI);
     this.animate(dt, face ? Math.atan2(face.x - this.position.x, face.z - this.position.z) : null);
     if (Math.floor(this.phase / Math.PI) !== prevStep && this.speed > 0.4) this.onStep?.(this, false);
   }
+
+  /** Cuánto se hunde en el suelo (dinosaurios atrapados en la brea). Solo en movimiento guiado. */
+  sink = 0;
 
   /** Coloca al dinosaurio en un punto (para eventos de la historia). */
   placeAt(x: number, z: number, heading: number) {

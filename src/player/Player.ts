@@ -25,6 +25,8 @@ export class Player {
   inWater = false;
   /** Velocidad horizontal actual (m/s). */
   speed = 0;
+  /** Multiplicador de velocidad del terreno (la brea frena). */
+  slow = 1;
   /** Se llama al aterrizar con la velocidad vertical de impacto. */
   onLand?: (impact: number) => void;
   onJump?: () => void;
@@ -54,6 +56,7 @@ export class Player {
     this.running = st.run && mag > 0.1 && !this.crouching && survival.energy > 2 && !this.model.busy;
     let target = (this.crouching ? CROUCH : this.running ? RUN : WALK) * mag;
     if (this.inWater) target *= 0.55;
+    target *= this.slow;
     if (this.model.busy) target = 0;
 
     // Aceleración suave (menos control en el aire).

@@ -161,7 +161,11 @@ const runStory = (page, seconds, until) => page.evaluate(async ([seconds, until]
     return g.story.pieceNear(g.player.position) && !g.player.model.busy;
   }, null, { timeout: 30000, polling: 1000 });
   console.log('   (junto a la pieza:', await page.evaluate(() => { const g = window.game, c = g.story.state.cronos; return Math.hypot(c[0] - g.player.position.x, c[1] - g.player.position.z).toFixed(2) + ' m'; }), ')');
-  await page.evaluate(() => window.game.input.press('interact'));
+  // A ~2 fps el jugador puede resbalar un poco entre fotogramas: se pulsa otra vez, como haría un niño.
+  for (let i = 0; i < 4; i++) {
+    await page.evaluate(() => { const g = window.game; if (!g.story.pieceNear(g.player.position)) { const [x, z] = g.story.state.cronos; g.player.spawn(x + 0.3, z + 0.3); } g.input.press('interact'); });
+    if (await page.waitForSelector('#story-card:not(.hidden)', { timeout: 5000 }).then(() => true, () => false)) break;
+  }
   try { await page.waitForSelector('#story-card:not(.hidden)', { timeout: 15000 }); } catch (e) {
     console.log('DEPURACIÓN', page.errors, await page.evaluate(() => ({ busy: window.game.player.model.busy, pressed: [...window.game.input.pressed], cr: window.game.story.state.cronos, prompt: document.getElementById('prompt').textContent, resting: window.game.resting, focus: !!window.game.focus })));
     throw e;

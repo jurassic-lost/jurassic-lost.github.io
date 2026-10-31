@@ -4,6 +4,8 @@ import { CollisionWorld } from '../core/Collision';
 import { InstancedChunks } from './InstancedChunks';
 import { prop } from './propModels';
 import { Terrain, riverX, sampleSlope, trailAt } from './Terrain';
+import { lavaDistance, volcanicAt } from './Volcano';
+import { tarStain } from './Features';
 import { CLEARING, PLAY_LIMIT, WATER_LEVEL } from './config';
 import * as M from './vegetationModels';
 
@@ -78,6 +80,11 @@ export class Vegetation {
         const dc = Math.hypot(x - CLEARING.x, z - CLEARING.z);
         if (spec.collider && dc < CLEARING.radius && spec.name !== 'boulderA') continue;
         if (sampleSlope(x, z) > spec.maxSlope) continue;
+        // Laderas del volcán casi desnudas (solo rocas y algo de hierba), nada en la lava ni en la brea.
+        const volc = volcanicAt(x, z);
+        if (volc > 0.2 && spec.name !== 'boulderA' && rand() < volc * 1.2) continue;
+        if ((volc > 0 || x < -90) && lavaDistance(x, z).d < 3.5) continue;
+        if (tarStain(x, z) > 0.2) continue;
         // Los senderos quedan despejados (algo de hierba y helechos en los bordes).
         const tr = trailAt(x, z);
         if (tr > 0.05 && (spec.collider || spec.name === 'bush' || rand() < tr * 1.4)) continue;

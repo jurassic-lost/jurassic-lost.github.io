@@ -3,6 +3,8 @@ import { rng } from '../core/math';
 import { CollisionWorld } from '../core/Collision';
 import { jitter, merge, part, vertexColorMaterial } from '../core/geometry';
 import { Terrain, riverX, sampleSlope } from '../world/Terrain';
+import { lavaDistance } from '../world/Volcano';
+import { tarStain } from '../world/Features';
 import { CLEARING, PLAY_LIMIT, SPAWN, WATER_LEVEL } from '../world/config';
 import { berryBush, mats } from '../world/vegetationModels';
 import { ItemId } from './items';
@@ -94,6 +96,7 @@ export class Collectibles {
         if (dSpawn < (k.type === 'berries' ? 14 : 4)) continue;
         const h = terrain.heightAt(x, z);
         if (h < WATER_LEVEL + 0.3 || Math.abs(x - riverX(z)) < 7 || sampleSlope(x, z) > 0.6) continue;
+        if (lavaDistance(x, z).d < 3 || tarStain(x, z) > 0.2) continue;
         if (collisions.blocked(x, z, k.type === 'berries' ? 1.2 : 0.5)) continue;
         const pos = new THREE.Vector3(x, h, z);
         q.setFromAxisAngle(up, rand() * Math.PI * 2);

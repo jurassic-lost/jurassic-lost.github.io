@@ -45,9 +45,15 @@ async function collect(page, type, n) {
       g.player.spawn(p.pos.x + 0.6, p.pos.z + 0.6);
       g.cam.snap();
     }, type);
-    await page.waitForFunction(() => window.game.focus && window.game.player.grounded, null, { timeout: 15000 });
+    try { await page.waitForFunction(() => window.game.focus && window.game.player.grounded, null, { timeout: 15000 }); } catch (e) {
+      console.log('DEPURACIÓN', await page.evaluate(() => { const g = window.game, pp = g.player.position; return { pp: [pp.x, pp.y, pp.z], grounded: g.player.grounded, inWater: g.player.inWater, h: g.terrain.heightAt(pp.x, pp.z), near: g.collectibles.pickups.filter((p) => p.available).map((p) => [p.type, Math.hypot(p.pos.x - pp.x, p.pos.z - pp.z).toFixed(2)]).sort((a, b) => a[1] - b[1]).slice(0, 3) }; }));
+      throw e;
+    }
     await page.evaluate(() => window.game.input.press('interact'));
-    await page.waitForFunction(() => !window.game.player.model.busy && !window.game.input.pressed.has('interact'), null, { timeout: 15000 });
+    try { await page.waitForFunction(() => !window.game.player.model.busy && !window.game.input.pressed.has('interact'), null, { timeout: 15000 }); } catch (e) {
+      console.log('DEPURACIÓN2', await page.evaluate(() => { const g = window.game; return { busy: g.player.model.busy, pressed: [...g.input.pressed], enabled: g.input.enabled, paused: g.paused, playing: g.playing, resting: g.resting, visiting: g.story.visiting, prompt: document.getElementById('prompt').textContent, overlays: [...document.querySelectorAll('.overlay:not(.hidden), #story-card:not(.hidden)')].map((e) => e.id) }; }));
+      throw e;
+    }
   }
 }
 

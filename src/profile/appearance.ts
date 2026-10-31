@@ -44,6 +44,7 @@ export function sanitizeAppearance(a: Partial<Appearance> | undefined): Appearan
   const base = defaultAppearance(a?.character === 'girl' ? 'girl' : 'boy');
   return {
     character: base.character,
+    ...(a?.identity === 'nodice' ? { identity: 'nodice' as const } : {}),
     skin: isColor(a?.skin) ? a!.skin! : base.skin,
     hairStyle: HAIR_STYLES.some((h) => h.id === a?.hairStyle) ? a!.hairStyle! : base.hairStyle,
     hairColor: isColor(a?.hairColor) ? a!.hairColor! : base.hairColor,

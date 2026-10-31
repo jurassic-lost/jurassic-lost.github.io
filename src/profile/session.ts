@@ -71,6 +71,7 @@ export class PlayerSession {
     if (game.survival.health < 20) game.survival.health = 20;
     game.collectibles.importDepleted(s.world.depleted ?? []);
     game.story.load(s.story);
+    game.hud.importExplored(s.world.explored);
     const [x, , z] = s.world.pos;
     const [sx, sz] = s.world.lastSafe;
     if (PlayerSession.safeSpot(game, x, z)) game.player.spawn(x, z);
@@ -96,6 +97,7 @@ export class PlayerSession {
     s.world.facing = game.player.facing;
     s.world.region = regionAt(p.x, p.z).id;
     s.world.depleted = game.collectibles.exportDepleted();
+    s.world.explored = game.hud.exportExplored();
     s.story = game.story.export();
     s.stats.daysSurvived = daysSurvived(s.world.gameTime);
   }

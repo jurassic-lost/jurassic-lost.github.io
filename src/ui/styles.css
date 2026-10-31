@@ -360,3 +360,24 @@ body.touch #hotbar > * { width: 44px; height: 44px; min-height: 0; padding: 0; f
   body.touch .mat { min-width: 0; padding: 4px 8px; font-size: 13px; }
   body.touch .mat b { font-size: 14px; }
 }
+
+/* ---------- Pantalla más limpia (Ivan: «llenas la escena de información») ---------- */
+.toast { max-width: min(520px, 80vw); }
+/* Móvil apaisado: avisos y botón de acción abajo en el centro, entre el joystick y los botones;
+   así no tapan la barra de armas ni el centro de la vista. */
+@media (max-height: 500px) {
+  body.touch #prompt { bottom: calc(10px + var(--safe-b)); font-size: 13px; padding: 5px 12px; max-width: 44vw; overflow: hidden; text-overflow: ellipsis; }
+  body.touch #prompt kbd { padding: 0 5px; margin-right: 4px; }
+  body.touch #toasts { top: auto; bottom: calc(52px + var(--safe-b)); }
+  body.touch .toast, body.touch .toast.big { font-size: 12px; padding: 4px 12px; border-width: 1.5px; max-width: 44vw; border-radius: 14px; }
+  body.touch .toast.phone { font-size: 11px; }
+  body.touch #target { top: calc(96px + var(--safe-t)); width: min(190px, 40vw); padding: 2px 8px 4px; }
+  body.touch #target b { font-size: 11px; }
+  body.touch #target .tbar { height: 5px; }
+  /* El reloj, bajo los indicadores (antes se montaba sobre el botón de atacar). */
+  body.touch #clock { right: auto; left: calc(12px + var(--safe-l)); top: calc(134px + var(--safe-t)); }
+}
+/* Móvil vertical: avisos más pequeños, justo bajo los materiales. */
+@media (max-width: 700px) and (min-height: 501px) {
+  body.touch .toast, body.touch .toast.big { font-size: 13px; padding: 5px 12px; }
+}

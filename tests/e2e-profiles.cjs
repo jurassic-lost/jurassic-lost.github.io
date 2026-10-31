@@ -64,7 +64,12 @@ async function collect(page, type, n) {
     }, type);
     await page.waitForFunction(() => window.game.focus && window.game.player.grounded, null, { timeout: 15000 });
     await page.evaluate(() => window.game.input.press('interact'));
-    await page.waitForFunction(() => !window.game.player.model.busy && !window.game.input.pressed.has('interact'), null, { timeout: 15000 });
+    try { await page.waitForFunction(() => !window.game.player.model.busy && !window.game.input.pressed.has('interact'), null, { timeout: 15000 }); } catch (e) {
+      console.log('DEPURACIÓN', page.errors, await page.evaluate(() => { const g = window.game; return { busy: g.player.model.busy, pressed: [...g.input.pressed], enabled: g.input.enabled, paused: g.paused, playing: g.playing, resting: g.resting, t: g.clockT ?? null, prompt: document.getElementById('prompt').textContent, frame: g.renderer.info.render.frame }; }));
+      await new Promise((r) => setTimeout(r, 2000));
+      console.log('   frame después de 2 s:', await page.evaluate(() => window.game.renderer.info.render.frame));
+      throw e;
+    }
   }
 }
 

@@ -313,6 +313,28 @@ export class AudioManager {
     });
   }
 
+  /** Chisporroteo de algo que se quema (pisar la lava). */
+  sizzle(volume = 0.3) {
+    if (!this.ctx) return;
+    const ctx = this.ctx; const t = ctx.currentTime;
+    const n = ctx.createBufferSource(); n.buffer = this.noiseBuf;
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 2500;
+    const g = ctx.createGain(); this.env(g, t, volume, 0.02, 0.5);
+    n.connect(hp).connect(g).connect(this.sfx);
+    n.start(t, Math.random() * 2); n.stop(t + 0.6);
+  }
+
+  /** Burbuja espesa que revienta (brea). */
+  blop(volume = 0.15, pan = 0) {
+    if (!this.ctx || volume < 0.01) return;
+    const ctx = this.ctx; const t = ctx.currentTime;
+    const o = ctx.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(260, t + 0.08);
+    const g = ctx.createGain(); this.env(g, t, volume, 0.005, 0.12);
+    o.connect(g).connect(this.panned(pan));
+    o.start(t); o.stop(t + 0.2);
+  }
+
   drink() {
     if (!this.ctx) return;
     const ctx = this.ctx; const t = ctx.currentTime;

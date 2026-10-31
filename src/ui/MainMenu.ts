@@ -172,7 +172,11 @@ export class MainMenu {
   private renderCreator() {
     const d = this.draft;
     this.preview.setAppearance(d);
-    document.querySelectorAll<HTMLButtonElement>('#cr-char button').forEach((b) => b.classList.toggle('on', b.dataset.v === d.character));
+    const pick = d.identity === 'nodice' ? 'nodice' : d.character;
+    document.querySelectorAll<HTMLButtonElement>('#cr-char button').forEach((b) => b.classList.toggle('on', b.dataset.v === pick));
+    // Con «Prefiero no decir» se elige el aspecto aparte (estilo 1 o 2).
+    $('cr-look-row').classList.toggle('hidden', pick !== 'nodice');
+    document.querySelectorAll<HTMLButtonElement>('#cr-look button').forEach((b) => b.classList.toggle('on', b.dataset.v === d.character));
     const swatches = (id: string, list: string[], key: 'skin' | 'hairColor' | 'shirt' | 'pants', label: string) => {
       const el = $(id); el.innerHTML = '';
       list.forEach((c, i) => {
@@ -200,14 +204,21 @@ export class MainMenu {
 
   private wireCreator() {
     $<HTMLInputElement>('cr-name').addEventListener('input', () => this.validateName());
+    const setBody = (c: 'boy' | 'girl', identity?: 'nodice') => {
+      const { identity: _old, ...rest } = this.draft;
+      // Cambia el modelo base y propone un peinado; el resto de colores se conservan.
+      const hairStyle = c === this.draft.character ? this.draft.hairStyle : defaultAppearance(c).hairStyle;
+      this.draft = { ...rest, character: c, hairStyle, ...(identity ? { identity } : {}) };
+      this.renderCreator();
+    };
     document.querySelectorAll<HTMLButtonElement>('#cr-char button').forEach((b) => {
       b.onclick = () => {
-        const c = b.dataset.v === 'girl' ? 'girl' : 'boy';
-        if (c === this.draft.character) return;
-        // Cambia el modelo base y propone un peinado; el resto de colores se conservan.
-        this.draft = { ...this.draft, character: c, hairStyle: defaultAppearance(c).hairStyle };
-        this.renderCreator();
+        if (b.dataset.v === 'nodice') setBody(this.draft.character, 'nodice');
+        else setBody(b.dataset.v === 'girl' ? 'girl' : 'boy');
       };
+    });
+    document.querySelectorAll<HTMLButtonElement>('#cr-look button').forEach((b) => {
+      b.onclick = () => setBody(b.dataset.v === 'girl' ? 'girl' : 'boy', 'nodice');
     });
     $('cr-back').onclick = () => this.screen('menu-main');
     $('cr-confirm').onclick = async () => { if (await this.confirmCharacter()) { $('cr-status').textContent = '✅ Personaje guardado.'; } };
@@ -314,7 +325,7 @@ export class MainMenu {
     const kiro = sv.companion.state === 'not_met' ? 'Aún no lo conoces' : `Amistad ${sv.companion.friendship}`;
     const rows: [string, string][] = [
       ['Nombre del explorador', session.profile.displayName],
-      ['Personaje', session.profile.appearance.character === 'girl' ? 'Niña exploradora' : 'Niño explorador'],
+      ['Personaje', session.profile.appearance.identity === 'nodice' ? 'Prefiere no decirlo' : session.profile.appearance.character === 'girl' ? 'Mujer' : 'Hombre'],
       ['Nivel', String(lv.level)],
       ['Experiencia', `${lv.into} / ${lv.next}`],
       ['Días sobrevividos', String(daysSurvived(sv.world.gameTime))],

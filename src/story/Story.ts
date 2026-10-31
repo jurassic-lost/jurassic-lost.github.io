@@ -1,3 +1,5 @@
+import { lavaDistance } from '../world/Volcano';
+import { tarAt } from '../world/Features';
 import * as THREE from 'three';
 import type { Game } from '../core/Game';
 import { Dinosaur } from '../creatures/Dinosaur';
@@ -205,7 +207,7 @@ export class Story {
   /** ¿Está la pieza al alcance para recogerla? */
   pieceNear(p: THREE.Vector3) {
     const c = this.state.cronos;
-    return !!c && Math.hypot(c[0] - p.x, c[1] - p.z) < 2.2;
+    return !!c && Math.hypot(c[0] - p.x, c[1] - p.z) < 2.6;
   }
 
   async takePiece() {
@@ -262,7 +264,7 @@ export class Story {
       let ok = 0;
       for (let d = 4; d <= 60; d += 4) {
         const x = from.x + Math.sin(a) * d, z = from.y + Math.cos(a) * d;
-        if (Math.abs(x) > 230 || Math.abs(z) > 230 || g.terrain.waterDepthAt(x, z) > 0.3) break;
+        if (Math.abs(x) > 230 || Math.abs(z) > 230 || g.terrain.waterDepthAt(x, z) > 0.3 || lavaDistance(x, z).d < 3 || tarAt(x, z) > 0) break;
         ok++;
       }
       if (ok > bestScore) { bestScore = ok; best = new THREE.Vector2(from.x + Math.sin(a) * ok * 4, from.y + Math.cos(a) * ok * 4); }

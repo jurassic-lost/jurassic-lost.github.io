@@ -30,7 +30,7 @@
       <div class="bigmap-box">
         <div class="craft-head"><h3>🗺 Mapa de la isla</h3><button id="bigmap-close" aria-label="Cerrar">✕</button></div>
         <canvas width="640" height="640"></canvas>
-        <div class="legend"><span style="--c:#ffcf4a">▲ Tú</span><span style="--c:#ffcf4a">● Refugio</span><span style="--c:#ff4040">● Tiranosaurio</span><span style="--c:#ff7040">● Depredadores</span><span style="--c:#9fd3ff">● Herbívoros</span></div>
+        <div class="legend"><span style="--c:#ffcf4a">▲ Tú</span><span style="--c:#ffcf4a">🛖 Refugio</span><span style="--c:#ff7040">🌋 Volcán</span><span style="--c:#c9d6c4">⬛ Sin explorar</span></div>
       </div>
     </div>
     <div id="clock"></div>
@@ -142,7 +142,8 @@
         </label>
         <div id="cr-name-msg" class="name-msg"></div>
         <p class="privacy">🔒 Inventa un nombre de aventura. No escribas tu nombre real, apellidos, teléfono ni dirección.</p>
-        <div class="opt"><span>Personaje</span><div id="cr-char" class="seg"><button data-v="boy">👦 Niño</button><button data-v="girl">👧 Niña</button></div></div>
+        <div class="opt"><span>Personaje</span><div id="cr-char" class="seg"><button data-v="boy">👨 Hombre</button><button data-v="girl">👩 Mujer</button><button data-v="nodice">🙂 Prefiero no decir</button></div></div>
+        <div class="opt hidden" id="cr-look-row"><span>Aspecto</span><div id="cr-look" class="seg"><button data-v="boy">Estilo 1</button><button data-v="girl">Estilo 2</button></div></div>
         <div class="opt"><span>Color de piel</span><div id="cr-skin" class="swatches"></div></div>
         <div class="opt"><span>Cabello</span><div id="cr-hair" class="seg"></div></div>
         <div class="opt"><span>Color de cabello</span><div id="cr-hair-color" class="swatches"></div></div>

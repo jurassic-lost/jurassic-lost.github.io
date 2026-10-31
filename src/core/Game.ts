@@ -3,7 +3,10 @@ import { AudioManager } from '../audio/AudioManager';
 import { Narrator } from '../audio/Narrator';
 import { Dinosaur } from '../creatures/Dinosaur';
 import { MeatDrops, Meat, MEAT_HEALTH, MEAT_HUNGER } from '../items/MeatDrops';
-import { POPULATION, Species, TREX, TRICERATOPS } from '../creatures/species';
+import { LONG_NECK, POPULATION, STEGOSAURUS, Species, TREX, TRICERATOPS } from '../creatures/species';
+import { VOLCANO, Volcano, lavaDistance } from '../world/Volcano';
+import { TAR_PITS, TarPits, tarAt } from '../world/Features';
+import { Bridges } from '../world/Bridges';
 import { Pterosaur } from '../creatures/Pterosaur';
 import { Collectibles, Pickup } from '../items/Collectibles';
 import { BUILDS, ITEMS, Inventory, RECIPES } from '../items/items';
@@ -12,7 +15,7 @@ import { Clock, clockAt, formatClock, hourToCycle, secondsUntilHour, DAY_SECONDS
 import { Player } from '../player/Player';
 import { ThirdPersonCamera } from '../player/ThirdPersonCamera';
 import { Survival } from '../survival/Survival';
-import { HUD } from '../ui/HUD';
+import { HUD, type MapMarker } from '../ui/HUD';
 import { Hotbar } from '../ui/Hotbar';
 import { Projectiles, WEAPONS, weaponModel } from '../combat/Weapons';
 import { TouchControls } from '../ui/TouchControls';
@@ -54,6 +57,15 @@ export class Game {
   readonly buildings: Buildings;
   /** Historia (capítulo 1): visita nocturna, huellas, CRONOS-047 y mensajes del celular. */
   readonly story: Story;
+  /** Volcán con ríos de lava (quema), pozos de brea (frena) y troncos caídos para cruzar. */
+  readonly volcano: Volcano;
+  readonly tar: TarPits;
+  readonly bridges: Bridges;
+  /** Dinosaurios atrapados en la brea (no se mueven ni atacan; solo llaman pidiendo ayuda). */
+  readonly trapped: { d: Dinosaur; x: number; z: number; t: number; next: number }[] = [];
+  private hazardMsg = 0;
+  private hazardWarn = 0;
+  private lavaSizzle = 0;
   /** Jugar con amigos en la misma isla (salas con código, PeerJS). */
   readonly mp: Multiplayer;
   readonly post: PostFX;
@@ -117,6 +129,13 @@ export class Game {
     this.env.loadSkies(this.renderer, nightSkyUrl, dayLightUrl, this.quality !== 'low');
     this.terrain = new Terrain(this.quality === 'low' ? 160 : 200);
     this.scene.add(this.terrain.mesh, this.terrain.water);
+    // Troncos-puente antes que la vegetación (así no crecen árboles encima de sus extremos).
+    this.bridges = new Bridges(this.terrain, this.collisions);
+    this.scene.add(this.bridges.group);
+    this.volcano = new Volcano(this.terrain, this.quality !== 'low');
+    this.scene.add(this.volcano.group);
+    this.tar = new TarPits(this.terrain);
+    this.scene.add(this.tar.group);
     this.vegetation = new Vegetation(this.terrain, this.collisions, { decor: preset.decor });
     this.scene.add(this.vegetation.group);
     this.shafts = new LightShafts(this.terrain, this.env.sunDir, this.quality === 'low' ? 10 : this.quality === 'medium' ? 22 : 30);
@@ -163,6 +182,21 @@ export class Game {
     let seed = 100;
     for (const [sp, x, z, n] of POPULATION)
       for (let i = 0; i < n; i++) this.addDino(sp, x + (i % 3) * 8 - 8, z + Math.floor(i / 3) * 8, seed++);
+    // Dinosaurios atrapados en los pozos de brea (como en la imagen de Ivan, sin heridas).
+    const stuck: [Species, number, number, number][] = [
+      [{ ...TREX, name: 'Tiranosaurio atrapado', friendly: true }, TAR_PITS[0][0] - 4, TAR_PITS[0][1] + 4, 0.38],
+      [{ ...STEGOSAURUS, friendly: true }, TAR_PITS[0][0] + 7, TAR_PITS[0][1] - 7, 0.4],
+      [{ ...LONG_NECK, friendly: true }, TAR_PITS[1][0], TAR_PITS[1][1], 0.3],
+      [{ ...TRICERATOPS, friendly: true }, TAR_PITS[2][0], TAR_PITS[2][1], 0.42],
+    ];
+    for (const [cfg, x, z, sink] of stuck) {
+      const d = new Dinosaur(cfg, x, z, this.terrain, this.collisions, 900 + this.trapped.length);
+      d.sink = cfg.bodyHeight * cfg.scale * sink;
+      d.placeAt(x, z, Math.random() * Math.PI * 2);
+      d.rig.root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
+      this.scene.add(d.rig.root);
+      this.trapped.push({ d, x, z, t: Math.random() * 10, next: 8 + Math.random() * 20 });
+    }
     for (let i = 0; i < 6; i++) {
       const p = new Pterosaur(new THREE.Vector3(-80 + i * 40, 45 + i * 4, 40 - i * 25), 50 + i * 12, 9 + i, i + 1);
       this.pterosaurs.push(p);
@@ -247,7 +281,8 @@ export class Game {
       const n = big < 1 ? 1 : big < 2.5 ? 2 : big < 4.5 ? 3 : 4;
       this.meat.drop(dd.position.x, dd.position.z, n, dd.cfg.radius * dd.cfg.scale + 0.8);
       this.audio.thud(0.6);
-      this.hud.toast(`¡Venciste al ${dd.cfg.name.toLowerCase()}! Dejó ${n} ${n === 1 ? 'trozo' : 'trozos'} de carne 🍖`, true);
+      // La barra de arriba ya dice «vencido»: aquí solo un aviso corto.
+      this.hud.toast(`Dejó ${n} ${n === 1 ? 'trozo' : 'trozos'} de carne 🍖`, false, '', 2400);
     };
     // Pisadas de los grandes: polvo, golpe sordo y (el tiranosaurio) un leve temblor.
     const big = cfg.scale * cfg.bodyHeight;
@@ -516,6 +551,7 @@ export class Game {
     this.player.update(dt, this.input, this.cam, this.survival);
     if (this.touch && wasCrouch !== this.input.state.crouch) this.touch.syncCrouch(this.input.state.crouch);
     const pp = this.player.position;
+    this.updateHazards(dt, pp);
 
     // Empuje físico entre el jugador y los dinosaurios.
     // Dentro de un refugio terminado los dinosaurios no te ven.
@@ -540,6 +576,7 @@ export class Game {
     }
 
     for (const p of this.pterosaurs) p.update(dt);
+    this.updateTrapped(dt, pp);
     this.updateInteraction();
     this.survival.update(dt, { running: this.player.running, moving: this.player.speed > 0.5, inWater: this.player.inWater });
     if (this.survival.dead) this.respawnAtSafePoint(true);
@@ -568,9 +605,11 @@ export class Game {
     this.audio.update(dt);
 
     this.hud.updateStats(this.survival);
-    this.hud.drawMinimap(pp.x, pp.z, Math.PI - this.player.facing, this.dinos.filter((d) => !d.down).map((d) => ({
-      x: d.position.x, z: d.position.z, color: (d.cfg as Species).map.color, size: (d.cfg as Species).map.size,
-    })).concat(this.buildings.shelters.map((s) => ({ x: s.position.x, z: s.position.z, color: '#ffcf4a', size: 4 }))).concat(this.story.markers()).concat(this.mp.markers()));
+    // Mapa: solo lo explorado; sin dinosaurios (hay que descubrirlos). Refugios siempre; el volcán, si ya lo viste.
+    this.hud.reveal(pp.x, pp.z);
+    const marks: MapMarker[] = this.buildings.shelters.map((s): MapMarker => ({ x: s.position.x, z: s.position.z, color: '#ffcf4a', size: 4, icon: '🛖' }));
+    if (this.hud.isExplored(VOLCANO.x, VOLCANO.z)) marks.push({ x: VOLCANO.x, z: VOLCANO.z, color: '#d9481c', size: 4, icon: '🌋' });
+    this.hud.drawMinimap(pp.x, pp.z, Math.PI - this.player.facing, marks.concat(this.story.markers(), this.mp.markers()));
     this.post.setMood(this.env.daylight, this.env.dusk);
     this.post.render(dt);
     if (this.settings.showFps) this.hud.tickFps(dt, `${this.renderer.info.render.calls} draws`);
@@ -578,6 +617,60 @@ export class Game {
     this.session?.tick(this, dt);
     // Postura de alerta si un depredador caza cerca.
     this.player.model.danger = this.dinos.some((d) => d.threatening && d.position.distanceTo(pp) < 30) ? 1 : 0;
+  }
+
+  /** Lava (quema mucho) y brea (frena). Sobre un tronco-puente no pasa nada. */
+  private updateHazards(dt: number, pp: THREE.Vector3) {
+    const nearVolcano = Math.hypot(pp.x - VOLCANO.x, pp.z - VOLCANO.z) < 140;
+    this.volcano.update(dt, this.env.daylight, nearVolcano);
+    this.tar.update(dt);
+    this.hazardMsg -= dt; this.hazardWarn -= dt; this.lavaSizzle -= dt;
+    const ground = this.terrain.heightAt(pp.x, pp.z);
+    const onGround = pp.y - ground < 0.7 && !this.bridges.onBridge(pp);
+    const ld = nearVolcano ? lavaDistance(pp.x, pp.z).d : 99;
+    if (ld < 0 && onGround && !this.resting) {
+      this.survival.damage(40 * dt);
+      if (this.lavaSizzle <= 0) {
+        this.audio.sizzle(0.35); this.lavaSizzle = 0.4;
+        const el = document.getElementById('hurt')!;
+        if (!(this.settings as Partial<ProfileSettings>).reduceMotion) { el.classList.add('on'); setTimeout(() => el.classList.remove('on'), 160); }
+      }
+      if (this.hazardMsg <= 0) { this.hud.toast('🔥 ¡LAVA! ¡Sal rápido o te quemarás!', true); this.hazardMsg = 4; }
+    } else if (ld < 5 && this.hazardWarn <= 0) {
+      this.hud.toast('🌋 Cuidado: la lava quema. Cruza por los troncos caídos.');
+      this.hazardWarn = 30;
+    }
+    const tar = tarAt(pp.x, pp.z);
+    const inTar = tar > 0 && onGround;
+    this.player.slow = inTar ? 1 - 0.78 * tar : 1;
+    if (inTar) {
+      this.player.model.root.position.y -= 0.45 * tar;
+      this.survival.add('energy', -1.5 * dt);
+      if (this.hazardMsg <= 0) { this.hud.toast('🕳️ ¡Brea pegajosa! Avanzas muy despacio: sal por la orilla.'); this.hazardMsg = 8; }
+    }
+  }
+
+  /** Los dinosaurios atrapados se retuercen y llaman de vez en cuando. */
+  private updateTrapped(dt: number, pp: THREE.Vector3) {
+    for (const s of this.trapped) {
+      s.t += dt;
+      const dist = s.d.position.distanceTo(pp);
+      // Lejos no se dibujan ni se animan (ahorra mucho en móviles).
+      s.d.rig.root.visible = dist < 110;
+      if (dist > 110) continue;
+      const face = new THREE.Vector3(s.x + Math.sin(s.t * 0.25) * 10, 0, s.z + Math.cos(s.t * 0.25) * 10);
+      s.d.scripted(dt, s.x, s.z, 0, face);
+      s.next -= dt;
+      if (s.next <= 0) {
+        s.next = 14 + Math.random() * 22;
+        s.d.roar(1.6);
+        if (dist < 90) {
+          const big = s.d.cfg.scale * s.d.cfg.bodyHeight;
+          this.audio.dinoCall(s.d.cfg.reaction === 'hunt' ? 'growl' : big > 4 ? 'boom' : 'honk', 0.4 * (1 - dist / 90), this.panOf(s.d.position));
+        }
+        if (dist < 35) this.audio.blop(0.2, this.panOf(s.d.position));
+      }
+    }
   }
 
   private craft(i: number) {
@@ -865,7 +958,9 @@ export class Game {
       }
     }
     const key = this.isTouch ? '✋' : 'E';
-    const home = this.focus || this.resting ? null : this.buildings.insideShelter(pp) ?? this.buildings.nearest(pp, 3.2, true);
+    // Dentro del refugio, dormir tiene prioridad sobre recoger algo del suelo.
+    const inside = this.resting ? null : this.buildings.insideShelter(pp);
+    const home = this.resting ? null : inside ?? (this.focus ? null : this.buildings.nearest(pp, 3.2, true));
     if (this.buildings.placing) {
       this.hud.setPrompt(this.buildings.valid ? `Colocar el refugio aquí 🛖 · ${this.isTouch ? '🛠' : 'T'} cancela` : 'Aquí no cabe: busca un sitio llano y despejado', key);
       if (this.input.consume('interact')) this.placeBuild();
@@ -873,12 +968,13 @@ export class Game {
     }
     if (this.resting) { this.hud.setPrompt(null); this.input.consume('interact'); return; }
     if (this.story.visiting) { this.hud.setPrompt('Quédate quieto dentro del refugio…', '🤫'); this.input.consume('interact'); return; }
-    if (!this.focus && this.story.pieceNear(pp)) {
+    // La pieza de la historia tiene prioridad sobre recoger materiales.
+    if (this.story.pieceNear(pp)) {
       this.hud.setPrompt('Recoger la pieza metálica que brilla ✨', key);
       if (!this.player.model.busy && this.input.consume('interact')) { this.player.model.playPickup(); void this.story.takePiece(); }
       return;
     }
-    if (home && !this.focus) {
+    if (home && (!this.focus || inside)) {
       this.hud.setPrompt(this.restLabel(), key);
       if (this.input.consume('interact') && !this.player.model.busy) this.rest(home);
       return;

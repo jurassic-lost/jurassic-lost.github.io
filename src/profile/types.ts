@@ -12,6 +12,8 @@ export type HairStyle = 'corto' | 'despeinado' | 'coleta' | 'melena';
 export interface Appearance {
   /** Solo cambia el modelo visual; no afecta a las habilidades. */
   character: Gender;
+  /** «Prefiero no decir»: no se muestra hombre ni mujer (el modelo sale de `character`). Las partidas antiguas no lo tienen. */
+  identity?: 'nodice';
   skin: string;
   hairStyle: HairStyle;
   hairColor: string;
@@ -107,6 +109,8 @@ export interface GameSave {
     gameTime: number;
     /** Recursos recogidos que aún no han vuelto a crecer: índice → segundos restantes. */
     depleted: [number, number][];
+    /** Zonas del mapa ya exploradas (base64, 1 bit por celda). Las partidas antiguas no lo tienen. */
+    explored?: string;
   };
   stats: {
     playTime: number;
