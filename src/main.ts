@@ -21,7 +21,14 @@ async function boot() {
   (window as unknown as { game: Game }).game = game; // útil para depurar desde la consola
   // App instalable (GitHub Pages): solo en una web normal, no en la versión de un archivo.
   if ('serviceWorker' in navigator && location.protocol === 'https:' && !(window as unknown as { __GLB?: unknown }).__GLB) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then((r) => r.update()).catch(() => {});
+    // Cuando hay una versión nueva instalada, se recarga una vez para mostrarla.
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloaded || !document.getElementById('hud')!.classList.contains('hidden')) return; // no interrumpe una partida
+      reloaded = true;
+      location.reload();
+    });
   }
   if (quatErrors.length) {
     // Aviso visible (también en el menú) para saber por qué no salen los dinosaurios nuevos.
