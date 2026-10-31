@@ -41,7 +41,7 @@ export class ThirdPersonCamera {
   rotate(dx: number, dy: number, zoom: number) {
     this.yaw -= dx * this.sensitivity;
     this.pitch = clamp(this.pitch + dy * this.sensitivity, -0.25, 1.25);
-    this.distance = clamp(this.distance + zoom * 0.6, 2.5, 12);
+    this.distance = clamp(this.distance + zoom * 0.8, 2.5, 22);
   }
 
   update(dt: number, focus: THREE.Vector3, crouch: boolean) {

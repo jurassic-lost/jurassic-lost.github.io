@@ -45,18 +45,37 @@ export class TouchControls {
     stick.addEventListener('pointerup', endStick);
     stick.addEventListener('pointercancel', endStick);
 
+    // Zona de cámara: un dedo gira la vista; dos dedos (pellizco) acercan o alejan.
     const look = document.getElementById('look-zone')!;
+    const fingers = new Map<number, { x: number; y: number }>();
+    let pinch = 0;
+    const spread = () => { const [a, b] = [...fingers.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
     look.addEventListener('pointerdown', (e) => {
-      this.lookId = e.pointerId;
-      look.setPointerCapture(e.pointerId);
-      this.lastLook = { x: e.clientX, y: e.clientY };
+      try { look.setPointerCapture(e.pointerId); } catch { /* puntero ya liberado */ }
+      fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (fingers.size === 1) { this.lookId = e.pointerId; this.lastLook = { x: e.clientX, y: e.clientY }; }
+      else if (fingers.size === 2) { this.lookId = null; pinch = spread(); }
     });
     look.addEventListener('pointermove', (e) => {
+      const f = fingers.get(e.pointerId);
+      if (!f) return;
+      f.x = e.clientX; f.y = e.clientY;
+      if (fingers.size >= 2) {
+        const d = spread();
+        // Separar los dedos acerca; juntarlos aleja (un paso cada ~40 px).
+        if (Math.abs(d - pinch) > 40) { this.input.addZoom(d < pinch ? 1 : -1); pinch = d; }
+        return;
+      }
       if (e.pointerId !== this.lookId) return;
       this.input.addLook((e.clientX - this.lastLook.x) * 1.6, (e.clientY - this.lastLook.y) * 1.6);
       this.lastLook = { x: e.clientX, y: e.clientY };
     });
-    const endLook = (e: PointerEvent) => { if (e.pointerId === this.lookId) this.lookId = null; };
+    const endLook = (e: PointerEvent) => {
+      fingers.delete(e.pointerId);
+      if (e.pointerId === this.lookId) this.lookId = null;
+      // Al levantar un dedo del pellizco, el otro vuelve a girar la vista sin saltos.
+      if (fingers.size === 1) { const [[id, p]] = [...fingers.entries()]; this.lookId = id; this.lastLook = { x: p.x, y: p.y }; }
+    };
     look.addEventListener('pointerup', endLook);
     look.addEventListener('pointercancel', endLook);
 

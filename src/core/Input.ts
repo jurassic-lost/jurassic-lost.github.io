@@ -68,6 +68,9 @@ export class Input {
     } else this.keys.delete(k);
   }
 
+  /** Acercar (negativo) o alejar (positivo) la cámara; lo usa el gesto de pellizco. */
+  addZoom(d: number) { if (this.enabled) this.zoomDelta += d; }
+
   addLook(dx: number, dy: number) {
     // Se ignoran saltos enormes que a veces produce el bloqueo de puntero.
     if (Math.abs(dx) > 300 || Math.abs(dy) > 300) return;
