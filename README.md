@@ -64,7 +64,7 @@ src/
   items/                  Collectibles (recursos en el mapa), items (catálogo e inventario)
   survival/               Survival (indicadores)
   ui/                     HUD, TouchControls, styles.css
-  audio/                  AudioManager (sonido sintetizado)
+  audio/                  AudioManager (sonido sintetizado + grabaciones de dinosaurios de Pixabay en audio/sounds)
   intro/                  Intro (cinemática) y Bedroom (cuarto del niño)
 ```
 

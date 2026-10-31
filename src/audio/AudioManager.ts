@@ -1,6 +1,15 @@
+import rugidoUrl from './sounds/rugido.mp3';
+import llamadaUrl from './sounds/llamada.mp3';
+import grunidoUrl from './sounds/grunido.mp3';
+
+/** Sonidos grabados de dinosaurios (Pixabay, ver sounds/CREDITOS.txt). */
+const SAMPLES = { rugido: rugidoUrl, llamada: llamadaUrl, grunido: grunidoUrl };
+type SampleName = keyof typeof SAMPLES;
+
 /**
- * Sonido 100 % sintetizado con Web Audio (sin archivos externos ni licencias):
- * viento/hojas, pájaros e insectos, pasos, recoger objetos y llamadas de dinosaurio.
+ * Sonido sintetizado con Web Audio: viento/hojas, pájaros e insectos, pasos, recoger objetos…
+ * Los rugidos y llamadas de dinosaurio usan grabaciones (Pixabay) y, mientras cargan
+ * o si fallan, la versión sintetizada.
  */
 export class AudioManager {
   private ctx: AudioContext | null = null;
@@ -25,6 +34,7 @@ export class AudioManager {
   private hushV = 0;
   private drone: GainNode | null = null;
   muted = false;
+  private readonly samples = new Map<SampleName, AudioBuffer>();
 
   /** Debe llamarse tras un gesto del usuario (requisito de los navegadores). */
   start() {
@@ -37,6 +47,7 @@ export class AudioManager {
     this.master.connect(ctx.destination);
     this.musicBus = ctx.createGain(); this.musicBus.gain.value = this._music; this.musicBus.connect(this.master);
     this.sfx = ctx.createGain(); this.sfx.gain.value = this._sfx; this.sfx.connect(this.master);
+    void this.loadSamples(ctx);
 
     // Ruido marrón reutilizable
     const len = ctx.sampleRate * 3;
@@ -186,6 +197,10 @@ export class AudioManager {
   /** Llamada de un dinosaurio con dirección: bramido grave (boom), bocinazo (honk) o gruñido (growl). */
   dinoCall(kind: 'boom' | 'honk' | 'growl', volume: number, pan = 0) {
     if (!this.ctx || volume < 0.01) return;
+    // Grabaciones: los saurópodos con la llamada más grave y lenta; los depredadores gruñen.
+    if (kind === 'boom' && this.playSample('llamada', volume * 1.4, pan, 0.6, 0.8)) return;
+    if (kind === 'honk' && this.playSample('llamada', volume * 1.1, pan, 1, 0.6)) return;
+    if (kind === 'growl' && this.playSample('grunido', volume * 1.3, pan, 0.8, 0.6)) return;
     const ctx = this.ctx; const t = ctx.currentTime;
     const p = ctx.createStereoPanner(); p.pan.value = pan;
     const out = ctx.createGain(); out.gain.value = 1;
@@ -318,6 +333,7 @@ export class AudioManager {
   /** Rugido potente (estilizado, sintetizado). */
   roar(volume = 0.6) {
     if (!this.ctx) return;
+    if (this.playSample('rugido', volume * 1.2, 0, 0.92, 0.7)) return;
     const ctx = this.ctx; const t = ctx.currentTime;
     const n = ctx.createBufferSource(); n.buffer = this.noiseBuf;
     const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 2;
@@ -380,6 +396,40 @@ export class AudioManager {
       }
     }
     this.drone.gain.setTargetAtTime(Math.max(0, Math.min(1, v)) * 0.16, ctx.currentTime, 1.2);
+  }
+
+  private async loadSamples(ctx: AudioContext) {
+    await Promise.all((Object.keys(SAMPLES) as SampleName[]).map(async (name) => {
+      try {
+        const data = await (await fetch(SAMPLES[name])).arrayBuffer();
+        this.samples.set(name, await ctx.decodeAudioData(data));
+      } catch (e) { console.warn('[sonido] no se pudo cargar', name, e); }
+    }));
+  }
+
+  /** ¿Están cargadas las grabaciones? (útil para pruebas) */
+  get samplesLoaded() { return this.samples.size; }
+
+  /**
+   * Reproduce una grabación con dirección y eco. `rate` < 1 la hace más grave y lenta
+   * (animales más grandes). Devuelve false si aún no está cargada.
+   */
+  private playSample(name: SampleName, volume: number, pan = 0, rate = 1, echo = 0.5) {
+    const buf = this.samples.get(name);
+    if (!this.ctx || !buf) return false;
+    if (volume < 0.01) return true;
+    const ctx = this.ctx;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.playbackRate.value = rate * (0.95 + Math.random() * 0.1);
+    const g = ctx.createGain(); g.gain.value = Math.min(1.5, volume);
+    const p = ctx.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan));
+    src.connect(g).connect(p);
+    p.connect(this.sfx);
+    const e = ctx.createGain(); e.gain.value = echo;
+    p.connect(e).connect(this.reverb);
+    src.start();
+    return true;
   }
 
   private panned(pan: number) {

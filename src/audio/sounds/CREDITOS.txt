@@ -1,0 +1,7 @@
+Sonidos de dinosaurios descargados por Ivan de Pixabay (https://pixabay.com/es/sound-effects/),
+con la licencia de contenido de Pixabay (uso gratuito, también en juegos; no hace falta atribución,
+pero se agradece). Se recortaron los silencios, se igualó el volumen y se pasaron a mono.
+
+- rugido.mp3  ← "Dinosaur roar with screams and growls" (dffdv, Pixabay 193210)
+- llamada.mp3 ← "Dinosaur" (freesound_community, Pixabay 99810)
+- grunido.mp3 ← "Nyasasaurus vocalization – dinosaur sfx" (QuetzwithCheddar, Pixabay 584661)

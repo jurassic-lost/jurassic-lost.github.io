@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 const dir = 'dist/assets';
 let html = readFileSync('dist/index.html', 'utf8');
 // Imágenes y otros recursos: se incrustan como data URL dentro del CSS y el JS.
-const MIME = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', svg: 'image/svg+xml' };
+const MIME = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', svg: 'image/svg+xml', mp3: 'audio/mpeg' };
 const media = readdirSync(dir).filter((f) => MIME[f.split('.').pop()]);
 const inlineMedia = (code) => media.reduce((c, f) => c.replace(new RegExp(`(\\./assets/|\\./|/assets/)?${f.replace(/[.]/g, '\\.')}`, 'g'),
   () => `data:${MIME[f.split('.').pop()]};base64,` + readFileSync(`${dir}/${f}`).toString('base64')), code);
