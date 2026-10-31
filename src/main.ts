@@ -1,6 +1,7 @@
 import './ui/styles.css';
 import { Game } from './core/Game';
 import { loadSettings } from './core/Settings';
+import { preloadProps } from './world/propModels';
 import { preloadGlbModels } from './creatures/glbModels';
 import { preloadQuatModels, quatErrors } from './creatures/quatModels';
 import { preloadRiggedCharacters } from './player/RiggedModel';
@@ -16,7 +17,7 @@ async function boot() {
     $('loading').textContent = 'Tu navegador no admite WebGL, necesario para el juego.';
     return;
   }
-  const [{ service, persistent }] = await Promise.all([createPersistence(), preloadGlbModels(), preloadQuatModels(), preloadRiggedCharacters()]);
+  const [{ service, persistent }] = await Promise.all([createPersistence(), preloadGlbModels(), preloadQuatModels(), preloadRiggedCharacters(), preloadProps()]);
   const game = new Game($<HTMLCanvasElement>('game'), settings);
   (window as unknown as { game: Game }).game = game; // útil para depurar desde la consola
   // App instalable (GitHub Pages): solo en una web normal, no en la versión de un archivo.

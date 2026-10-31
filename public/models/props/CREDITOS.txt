@@ -1,0 +1,11 @@
+Modelos y fotos de escenario (todos con licencia CC0, dominio público):
+
+- Roca "Namaqualand Boulder 02": Poly Haven (polyhaven.com), CC0.
+- Árboles "Island Tree 02" y "Tree Small 02": Poly Haven (polyhaven.com), CC0.
+- Cielo nocturno "NightSkyHDRI016A" y luz de día "DayEnvironmentHDRI113": ambientCG (ambientcg.com), CC0.
+
+Los originales vienen en 4K para Blender. Para que el juego funcione en el celular se convirtieron a GLB:
+la roca con menos polígonos (1590 triángulos) y texturas de 1024 px; los árboles con menos hojas
+(más grandes, para que la copa siga llena), ramas simplificadas, sin mapas de normales ni rugosidad
+y texturas de 1024 px. Del cielo de noche solo se usa la bóveda (sin el horizonte, que tiene luces de pueblo),
+y la foto de día solo como luz ambiental (no se ve, porque tiene coches y edificios).

@@ -24,6 +24,8 @@ import { CollisionWorld } from './Collision';
 import { windTime } from './textures';
 import { Intro } from '../intro/Intro';
 import { Story } from '../story/Story';
+import nightSkyUrl from '../world/sky/cielo-noche.jpg';
+import dayLightUrl from '../world/sky/luz-dia.jpg';
 import { PostFX } from './PostFX';
 import { patchAtmosphere } from '../world/Atmosphere';
 import { PARTICLE_BUDGET, Particles } from '../world/Particles';
@@ -102,6 +104,7 @@ export class Game {
 
     patchAtmosphere();
     this.env = new Environment(this.scene);
+    this.env.loadSkies(this.renderer, nightSkyUrl, dayLightUrl, this.quality !== 'low');
     this.terrain = new Terrain(this.quality === 'low' ? 160 : 200);
     this.scene.add(this.terrain.mesh, this.terrain.water);
     this.vegetation = new Vegetation(this.terrain, this.collisions, { decor: preset.decor });

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { fbm, rng } from '../core/math';
 import { CollisionWorld } from '../core/Collision';
 import { InstancedChunks } from './InstancedChunks';
+import { prop } from './propModels';
 import { Terrain, riverX, sampleSlope, trailAt } from './Terrain';
 import { CLEARING, PLAY_LIMIT, WATER_LEVEL } from './config';
 import * as M from './vegetationModels';
@@ -45,8 +46,13 @@ export class Vegetation {
       { name: 'log', parts: M.log(), count: 90, scale: [0.8, 1.2], collider: { r: 0.75, top: 1.1 }, spacing: 5, forest: 0.4, tint: 0.15, maxSlope: 0.25, log: true },
       { name: 'cycad', parts: M.cycad(), count: 550, scale: [0.7, 1.3], collider: { r: 0.45, top: 999 }, spacing: 2.5, forest: 0, tint: 0.2, maxSlope: 0.6 },
       { name: 'treefern', parts: M.treeFern(), count: 500, scale: [0.8, 1.4], collider: { r: 0.35, top: 999 }, spacing: 2, forest: 0.5, tint: 0.2, maxSlope: 0.7 },
-      { name: 'boulderA', parts: M.boulder(3), count: 190, scale: [0.8, 2.6], collider: { r: 1.15, top: 1.4 }, spacing: 2.5, forest: -0.3, tint: 0.1, maxSlope: 1.4, outsideLimit: true },
+      { name: 'boulderA', parts: prop('boulder') ?? M.boulder(3), count: 190, scale: [0.8, 2.6], collider: { r: 1.15, top: 1.4 }, spacing: 2.5, forest: -0.3, tint: 0.1, maxSlope: 1.4, outsideLimit: true },
       { name: 'boulderB', parts: M.boulder(9), count: 190, scale: [0.6, 1.8], collider: { r: 1.15, top: 1.4 }, spacing: 2.5, forest: -0.3, tint: 0.1, maxSlope: 1.4, outsideLimit: true },
+      // Árboles realistas de Poly Haven (CC0): pocos, en claros y orillas (pesan más que los procedurales).
+      ...(['islandTree', 'smallTree'] as const).flatMap((n) => {
+        const parts = prop(n);
+        return parts ? [{ name: n, parts, count: Math.round(28 * density.decor), scale: [1.4, 2.1] as [number, number], collider: { r: 0.5, top: 999 }, spacing: 5, forest: -0.4, tint: 0.12, maxSlope: 0.45 }] : [];
+      }),
       { name: 'bush', parts: M.bush(), count: 1100, scale: [0.7, 1.4], spacing: 0, forest: 0.6, tint: 0.25, maxSlope: 0.8 },
       { name: 'fern', parts: M.fern(), count: Math.round(5500 * density.decor), scale: [0.7, 1.6], spacing: 0, forest: 0.3, tint: 0.25, maxSlope: 0.9 },
       // Sotobosque prehistórico: helechos gigantes, hojas anchas y colas de caballo.

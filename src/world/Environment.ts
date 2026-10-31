@@ -80,6 +80,39 @@ export class Environment {
     this.moon.frustumCulled = false;
     this.moon.renderOrder = -1;
     scene.add(this.stars, this.moon);
+    // Cielo nocturno fotografiado (ambientCG, CC0): solo la bóveda, sin el horizonte.
+    this.nightDome = new THREE.Mesh(new THREE.SphereGeometry(420, 48, 16, 0, Math.PI * 2, 0, THREE.MathUtils.degToRad(88)),
+      new THREE.MeshBasicMaterial({ side: THREE.BackSide, fog: false, transparent: true, opacity: 0, depthWrite: false, color: '#9fb0d0' }));
+    this.nightDome.frustumCulled = false;
+    this.nightDome.renderOrder = -3;
+    this.nightDome.visible = false;
+    scene.add(this.nightDome);
+  }
+
+  private readonly nightDome: THREE.Mesh;
+  private envLight = false;
+
+  /**
+   * Fotos de cielo (CC0): la bóveda de la noche y, en calidad media/alta, la luz ambiental
+   * de un bosque de día para los reflejos de los materiales realistas.
+   */
+  loadSkies(renderer: THREE.WebGLRenderer, nightUrl: string, dayUrl: string, withEnv: boolean) {
+    const loader = new THREE.TextureLoader();
+    loader.load(nightUrl, (t) => {
+      t.colorSpace = THREE.SRGBColorSpace;
+      const m = this.nightDome.material as THREE.MeshBasicMaterial;
+      m.map = t; m.needsUpdate = true;
+    });
+    if (!withEnv) return;
+    loader.load(dayUrl, (t) => {
+      t.mapping = THREE.EquirectangularReflectionMapping;
+      t.colorSpace = THREE.SRGBColorSpace;
+      const pm = new THREE.PMREMGenerator(renderer);
+      this.scene.environment = pm.fromEquirectangular(t).texture;
+      pm.dispose(); t.dispose();
+      this.envLight = true;
+      this.scene.environmentIntensity = THREE.MathUtils.lerp(0.04, 0.3, this.daylight);
+    });
   }
 
   /** Cordilleras lejanas con nieve y nubes (no les afecta la niebla; ya llevan su bruma). */
@@ -235,6 +268,10 @@ export class Environment {
     (this.stars.material as THREE.PointsMaterial).opacity = night * 0.95;
     this.stars.visible = night > 0.02;
     (this.moon.material as THREE.MeshBasicMaterial).opacity = night;
+    const dome = this.nightDome.material as THREE.MeshBasicMaterial;
+    dome.opacity = night * 0.85;
+    this.nightDome.visible = !!dome.map && night > 0.02;
+    if (this.envLight) this.scene.environmentIntensity = THREE.MathUtils.lerp(0.04, 0.3, day);
     this.moon.visible = c.night || night > 0.02;
     this.moonDir.copy(c.night ? light : light.clone().negate().setY(0.4).normalize());
   }
@@ -247,6 +284,7 @@ export class Environment {
     this.sky.position.copy(camera.position);
     this.backdrop.position.set(camera.position.x, 0, camera.position.z);
     this.stars.position.copy(camera.position);
+    this.nightDome.position.copy(camera.position);
     this.smokeT += 0.016;
     for (const sp of this.smoke) {
       const { base, i } = sp.userData.smoke as { base: THREE.Vector3; i: number };

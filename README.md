@@ -151,3 +151,7 @@ El miedo viene del sonido, la oscuridad y el comportamiento de los dinosaurios, 
 - **Al amanecer:** huellas enormes junto al refugio y la pieza metálica **CRONOS-047** (objeto especial, con tarjeta). El rastro de huellas lleva a un lugar donde empiezan unas huellas diminutas y algo chilla entre los helechos: la misión «Una voz entre los helechos» prepara el encuentro con Kiro (capítulo 2).
 - **Partidas anteriores:** se conservan perfiles, inventario, construcciones y misiones; la historia empieza vacía y continúa con la misión nueva. Copia de seguridad del código anterior en la rama `respaldo-antes-del-terror` (y en `jurassic-lost-respaldos/pre-terror` de los archivos del proyecto).
 - Código: `src/story/Story.ts` (guion, huellas, pieza, mensajes) y `src/story/NightAmbience.ts` (ambiente nocturno). Pruebas: `tests/e2e-story.cjs` (24 comprobaciones) y `tests/e2e-old-save.cjs` (abre con esta versión una partida creada con la anterior).
+
+## Escenario realista (Poly Haven y ambientCG, CC0)
+
+Roca y dos árboles de Poly Haven convertidos desde Blender a GLB ligeros (`public/models/props`, ver `CREDITOS.txt`), cargados por `src/world/propModels.ts`; si no cargan, se usan los modelos procedurales. Cielo nocturno fotografiado como bóveda de la noche y foto de un bosque de día como luz ambiental en calidad media y alta (`src/world/sky`).
