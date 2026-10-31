@@ -17,7 +17,7 @@ export interface SpeciesConfig {
   personal: number;    // distancia a la que se aparta
   homeRadius: number;
   stride: number;      // longitud de paso (para la animación)
-  /** calm: se aparta; curious: se acerca un poco; apex: ruge y vigila (no se puede vencer). */
+  /** calm: tranquilo; curious: se acerca un poco; apex: gran depredador (ruge y vigila). */
   behavior?: 'calm' | 'curious' | 'apex';
   /** Cuánto baja la cabeza al pastar (0 = no pasta). */
   graze?: number;
@@ -29,9 +29,11 @@ export interface SpeciesConfig {
   attack: number;
   /** Altura del centro del cuerpo (para impactos), en metros sin escalar. */
   bodyHeight: number;
+  /** Amigo del jugador: nunca ataca ni se le puede vencer. */
+  friendly?: boolean;
 }
 
-type State = 'idle' | 'walk' | 'alert' | 'avoid' | 'approach' | 'charge' | 'hunt' | 'stunned';
+type State = 'idle' | 'walk' | 'alert' | 'avoid' | 'approach' | 'charge' | 'hunt' | 'stunned' | 'down';
 
 /**
  * Dinosaurio con IA básica de estados: reposo/pastar, patrulla entre puntos,
@@ -55,8 +57,11 @@ export class Dinosaur {
   onAlert?: (d: Dinosaur) => void;
   /** Se llama cuando golpea o muerde al jugador. */
   onAttackPlayer?: (d: Dinosaur, damage: number) => void;
-  /** Se llama cuando se rinde y huye. */
+  /** Se llama cuando queda vencido (cae al suelo). */
   onDefeated?: (d: Dinosaur) => void;
+  /** Vencido: tumbado, luego desaparece y reaparece en su zona un rato después. */
+  get down() { return this.state === 'down'; }
+  private downT = 0;
   /** Cada pisada (para el polvo, el sonido y el temblor); `run` si va corriendo. */
   onStep?: (d: Dinosaur, run: boolean) => void;
   /** Llamada espontánea (bramido, gruñido) cuando está tranquilo. */
@@ -96,26 +101,54 @@ export class Dinosaur {
   }
   get hitRadius() { return this.cfg.radius * this.cfg.scale * 1.15 + 0.2; }
 
-  /** Recibe un golpe del jugador. Devuelve true si se rinde. */
-  takeHit(damage: number, player: THREE.Vector3): boolean {
+  /** Recibe un golpe del jugador. Devuelve true si queda vencido. */
+  takeHit(damage: number, _player: THREE.Vector3): boolean {
+    if (this.down || this.cfg.friendly) return false;
     this.flash = 0.25;
     if (this.cfg.hp !== Infinity) this.hp -= damage;
     if (this.hp <= 0) {
-      this.hp = this.cfg.hp;
-      this.pickGoal(player, 45);
-      this.state = 'avoid';
-      this.timer = 14;
+      this.hp = 0;
+      this.state = 'down';
+      this.downT = 0;
+      this.speed = 0;
       this.onDefeated?.(this);
       return true;
     }
+    // Todos se defienden: tras el golpe persiguen al jugador.
     this.state = 'stunned';
     this.timer = 0.35;
-    switch (this.cfg.reaction) {
-      case 'flee': this.afterStun = 'avoid'; this.pickGoal(player, 30); break;
-      case 'defend': this.afterStun = 'charge'; this.chargeTime = 6; break;
-      case 'hunt': this.afterStun = 'hunt'; this.chargeTime = 12; break;
-    }
+    this.afterStun = 'hunt';
+    this.chargeTime = 14;
     return false;
+  }
+
+  /** Vida restante (0..1) para la barra en pantalla. */
+  get hpFraction() { return this.cfg.hp === Infinity ? 1 : Math.max(0, this.hp / this.cfg.hp); }
+
+  /** Tumbado (sin sangre ni heridas: cae de lado, se hunde en la hierba y reaparece más tarde). */
+  private updateDown(dt: number, player: THREE.Vector3) {
+    this.downT += dt;
+    const r = this.rig;
+    const fall = Math.min(1, this.downT / 0.9);
+    const size = this.cfg.radius * this.cfg.scale;
+    r.root.position.set(this.position.x, this.position.y + fall * size * 0.25 - Math.max(0, this.downT - 10) * 0.25 * size, this.position.z);
+    r.root.rotation.y = this.heading;
+    r.body.rotation.z = fall * fall * 1.45;
+    r.body.rotation.x = 0;
+    r.root.visible = this.downT < 16;
+    // Reaparece en su zona cuando el jugador está lejos.
+    if (this.downT > 150) {
+      const hx = this.home.x, hz = this.home.y;
+      if (Math.hypot(player.x - hx, player.z - hz) > 60) {
+        this.position.set(hx, this.terrain.heightAt(hx, hz), hz);
+        this.hp = this.cfg.hp;
+        this.state = 'idle';
+        this.timer = 3;
+        this.afterStun = 'idle';
+        r.body.rotation.z = 0;
+        r.root.visible = true;
+      }
+    }
   }
   private chargeTime = 0;
 
@@ -145,6 +178,7 @@ export class Dinosaur {
   update(dt: number, player: THREE.Vector3, playerStealth: number) {
     this.time += dt;
     this.timer -= dt;
+    if (this.down) { this.updateDown(dt, player); return; }
     const dx = player.x - this.position.x, dz = player.z - this.position.z;
     const distPlayer = Math.hypot(dx, dz);
     const perceives = distPlayer < this.cfg.perception * playerStealth;
@@ -155,8 +189,9 @@ export class Dinosaur {
     // Transiciones de estado según distancia y estado interno.
     if (this.state === 'stunned' || this.state === 'charge' || this.state === 'hunt') {
       // Estados de combate: se gestionan abajo.
-    } else if (this.cfg.reaction === 'hunt' && perceives && playerStealth > 0 && this.cfg.behavior === 'apex' && homeDist < 110) {
-      if (this.state !== 'alert') { this.state = 'alert'; this.timer = 1.6; this.afterStun = 'hunt'; this.chargeTime = 14; this.onAlert?.(this); }
+    } else if (!this.cfg.friendly && perceives && playerStealth > 0 && homeDist < 110) {
+      // Todos los dinosaurios atacan si ven al jugador (menos el amigo).
+      if (this.state !== 'alert') { this.state = 'alert'; this.timer = 1.2 + this.rand() * 0.8; this.afterStun = 'hunt'; this.chargeTime = 14; this.onAlert?.(this); }
     } else if (distPlayer < this.cfg.personal && this.state !== 'avoid') {
       if (this.pickGoal(player)) { this.state = 'avoid'; this.timer = 8; }
     } else if (perceives && this.cfg.behavior === 'curious' && (this.state === 'idle' || this.state === 'walk') && distPlayer > this.cfg.personal + 2) {

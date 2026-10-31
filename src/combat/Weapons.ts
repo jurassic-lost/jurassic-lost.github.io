@@ -118,6 +118,7 @@ export class Projectiles {
       else p.obj.rotation.x += dt * 10;
       let hit = false;
       for (const d of dinos) {
+        if (d.down) continue;
         const c = d.hitCenter(this.tmp);
         // Distancia del centro al segmento recorrido en este fotograma (evita atravesar).
         this.seg.copy(p.obj.position).sub(this.prev);

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { AudioManager } from '../audio/AudioManager';
 import { Dinosaur } from '../creatures/Dinosaur';
+import { MeatDrops, Meat, MEAT_HEALTH, MEAT_HUNGER } from '../items/MeatDrops';
 import { POPULATION, Species, TREX, TRICERATOPS } from '../creatures/species';
 import { Pterosaur } from '../creatures/Pterosaur';
 import { Collectibles, Pickup } from '../items/Collectibles';
@@ -43,6 +44,8 @@ export class Game {
   readonly vegetation: Vegetation;
   readonly shafts: LightShafts;
   readonly collectibles: Collectibles;
+  readonly meat: MeatDrops;
+  private meatFocus: Meat | null = null;
   readonly buildings: Buildings;
   readonly post: PostFX;
   readonly particles: Particles;
@@ -104,6 +107,8 @@ export class Game {
     this.scene.add(this.shafts.group);
     this.collectibles = new Collectibles(this.terrain, this.collisions);
     this.scene.add(this.collectibles.group);
+    this.meat = new MeatDrops(this.terrain);
+    this.scene.add(this.meat.group);
     this.buildings = new Buildings(this.terrain, this.collisions);
     this.scene.add(this.buildings.group);
     this.buildings.onBuilt = (s) => this.onShelterBuilt(s);
@@ -170,18 +175,31 @@ export class Game {
         if (dist < 60) this.audio.roar(0.7 * (1 - dist / 60));
         if (this.playing && performance.now() - this.trexWarned > 30000) {
           this.trexWarned = performance.now();
-          this.hud.toast('🦖 ¡Un tiranosaurio! No te acerques: escóndete o aléjate despacio.', true);
+          this.hud.toast('🦖 ¡Un tiranosaurio te ha visto! Aguanta muchos golpes: lucha con tus mejores armas o escóndete.', true);
         }
       } else if (cfg.reaction === 'hunt') {
         if (dist < 50) this.audio.roar(0.45 * (1 - dist / 50));
         if (this.playing && performance.now() - this.trexWarned > 30000) {
           this.trexWarned = performance.now();
-          this.hud.toast(`🦖 ¡Un ${cfg.name.toLowerCase()} te ha visto! Aléjate o espántalo con tus armas.`, true);
+          this.hud.toast(`🦖 ¡Un ${cfg.name.toLowerCase()} te ha visto y viene a por ti! Defiéndete con tus armas.`, true);
         }
-      } else if (dist < 40) this.audio.snort(0.25 * (1 - dist / 40));
+      } else {
+        if (dist < 40) this.audio.snort(0.25 * (1 - dist / 40));
+        if (this.playing && performance.now() - this.trexWarned > 30000) {
+          this.trexWarned = performance.now();
+          this.hud.toast(`¡El ${cfg.name.toLowerCase()} te ha visto y viene a por ti! Defiéndete 🏏`);
+        }
+      }
     };
     d.onAttackPlayer = (dd, dmg) => this.hurtPlayer(dd, dmg);
-    d.onDefeated = (dd) => this.hud.toast(`El ${dd.cfg.name.toLowerCase()} se asusta y se va corriendo.`);
+    d.onDefeated = (dd) => {
+      // Más carne cuanto más grande es el dinosaurio.
+      const big = dd.cfg.scale * dd.cfg.bodyHeight;
+      const n = big < 1 ? 1 : big < 2.5 ? 2 : big < 4.5 ? 3 : 4;
+      this.meat.drop(dd.position.x, dd.position.z, n, dd.cfg.radius * dd.cfg.scale + 0.8);
+      this.audio.thud(0.6);
+      this.hud.toast(`¡Venciste al ${dd.cfg.name.toLowerCase()}! Dejó ${n} ${n === 1 ? 'trozo' : 'trozos'} de carne 🍖`, true);
+    };
     // Pisadas de los grandes: polvo, golpe sordo y (el tiranosaurio) un leve temblor.
     const big = cfg.scale * cfg.bodyHeight;
     d.onStep = (dd, run) => {
@@ -440,6 +458,7 @@ export class Game {
     for (const d of this.dinos) {
       d.lodFar = d.position.distanceTo(this.camera.position) > lodDist;
       d.update(dt, pp, stealth);
+      if (d.down) continue;
       const r = d.cfg.radius * d.cfg.scale + 0.35;
       const dx = pp.x - d.position.x, dz = pp.z - d.position.z, dist = Math.hypot(dx, dz);
       if (dist < r && dist > 1e-3 && pp.y < d.position.y + 2.5 * d.cfg.scale) {
@@ -457,6 +476,7 @@ export class Game {
     if (pp.distanceTo(this.startPos) > 15) this.objectives.set('explore', 15);
 
     this.collectibles.update(dt, this.focus);
+    this.meat.update(dt);
     this.updateBuilding(dt);
     this.updateTimeOfDay(false, dt);
     this.terrain.update(dt);
@@ -474,7 +494,7 @@ export class Game {
     this.audio.update(dt);
 
     this.hud.updateStats(this.survival);
-    this.hud.drawMinimap(pp.x, pp.z, Math.PI - this.player.facing, this.dinos.map((d) => ({
+    this.hud.drawMinimap(pp.x, pp.z, Math.PI - this.player.facing, this.dinos.filter((d) => !d.down).map((d) => ({
       x: d.position.x, z: d.position.z, color: (d.cfg as Species).map.color, size: (d.cfg as Species).map.size,
     })).concat(this.buildings.shelters.map((s) => ({ x: s.position.x, z: s.position.z, color: '#ffcf4a', size: 4 }))));
     this.post.setMood(this.env.daylight, this.env.dusk);
@@ -518,6 +538,7 @@ export class Game {
       let bestDot = Math.cos(0.14);
       const c = new THREE.Vector3();
       for (const d of this.dinos) {
+        if (d.down) continue;
         d.hitCenter(c);
         const to = c.clone().sub(this.camera.position);
         const dist = to.length();
@@ -536,6 +557,7 @@ export class Game {
       // Ayuda de puntería: golpea al dinosaurio más cercano delante del jugador.
       let best: Dinosaur | null = null, bestDist = Infinity;
       for (const d of this.dinos) {
+        if (d.down) continue;
         const dx = d.position.x - pp.x, dz = d.position.z - pp.z;
         const dist = Math.hypot(dx, dz) - d.cfg.radius * d.cfg.scale;
         if (dist > w.reach || dist >= bestDist) continue;
@@ -557,9 +579,8 @@ export class Game {
 
   private hitDino(d: Dinosaur, damage: number) {
     this.audio.thud(0.45);
-    const defeated = d.takeHit(damage, this.player.position);
-    if (!defeated && d.cfg === TREX) this.hud.toast('¡No puedes vencer al tiranosaurio! ¡Corre y escóndete!', true);
-    else if (!defeated && d.cfg.reaction === 'defend') this.hud.toast(`¡El ${d.cfg.name.toLowerCase()} se enfada!`);
+    d.takeHit(damage, this.player.position);
+    this.hud.showTarget(d.cfg.name, d.hpFraction);
   }
 
   /** Un dinosaurio embiste o muerde al jugador: daño, empujón y aviso. */
@@ -697,6 +718,8 @@ export class Game {
   private updateInteraction() {
     const pp = this.player.position;
     this.focus = this.player.grounded ? this.collectibles.nearest(pp) : null;
+    this.meatFocus = this.player.grounded ? this.meat.nearest(pp, 1.8) : null;
+    if (this.meatFocus) this.focus = null;
     const t = this.terrain;
     this.nearWater = false;
     if (!this.focus) {
@@ -718,14 +741,24 @@ export class Game {
       if (this.input.consume('interact') && !this.player.model.busy) this.rest(home);
       return;
     }
-    if (this.focus) {
+    if (this.meatFocus) this.hud.setPrompt(`Comer carne 🍖 (+${MEAT_HEALTH} vida)`, key);
+    else if (this.focus) {
       const def = ITEMS[this.focus.type];
       this.hud.setPrompt(def.eatOnPickup ? `Comer ${def.name.toLowerCase()} ${def.icon}` : `Recoger ${def.name.toLowerCase()} ${def.icon}`, key);
     } else if (this.nearWater) this.hud.setPrompt('Beber agua 💧', key);
     else this.hud.setPrompt(null);
 
     if (!this.input.consume('interact') || this.player.model.busy) return;
-    if (this.focus) {
+    if (this.meatFocus) {
+      const m = this.meatFocus;
+      this.player.model.playPickup();
+      this.player.facing = Math.atan2(m.pos.x - pp.x, m.pos.z - pp.z);
+      this.meat.take(m);
+      this.audio.pickup();
+      this.survival.add('health', MEAT_HEALTH);
+      this.survival.add('hunger', MEAT_HUNGER);
+      this.hud.toast(`¡Ñam! +${MEAT_HEALTH} vida ❤️ +${MEAT_HUNGER} hambre 🍖`);
+    } else if (this.focus) {
       const p = this.focus, def = ITEMS[p.type];
       this.player.model.playPickup();
       this.player.facing = Math.atan2(p.pos.x - pp.x, p.pos.z - pp.z);

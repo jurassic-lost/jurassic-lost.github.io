@@ -130,6 +130,17 @@ export class HUD {
     el.classList.add('show');
   }
 
+  private targetTimer = 0;
+  /** Muestra la vida del dinosaurio golpeado durante unos segundos. */
+  showTarget(name: string, fraction: number) {
+    const el = $('#target');
+    el.querySelector('b')!.textContent = fraction > 0 ? `🦖 ${name}` : `🦖 ${name} vencido`;
+    (el.querySelector('.tbar i') as HTMLElement).style.width = `${Math.round(fraction * 100)}%`;
+    el.classList.remove('hidden');
+    clearTimeout(this.targetTimer);
+    this.targetTimer = window.setTimeout(() => el.classList.add('hidden'), 3500);
+  }
+
   toast(text: string, big = false) {
     const el = document.createElement('div');
     el.className = 'toast' + (big ? ' big' : '');
