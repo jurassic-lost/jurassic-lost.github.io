@@ -5,3 +5,10 @@ pero se agradece). Se recortaron los silencios, se igualó el volumen y se pasar
 - rugido.mp3  ← "Dinosaur roar with screams and growls" (dffdv, Pixabay 193210)
 - llamada.mp3 ← "Dinosaur" (freesound_community, Pixabay 99810)
 - grunido.mp3 ← "Nyasasaurus vocalization – dinosaur sfx" (QuetzwithCheddar, Pixabay 584661)
+
+Ambiente y pasos (también de Pixabay, enviados por Ivan). Se recortaron trozos, se hizo un bucle
+sin cortes (fundido de 2 s) y se pasaron a mono:
+- bosque.mp3       ← "Nature forest sound" (SoundReality, Pixabay 537925), 52 s desde el minuto 1
+- aves.mp3         ← "Canto de aves de campo, Argentina" (u_dd91t5um85, Pixabay 180340), 39 s
+- bosque-calmo.mp3 ← "Ambiente de bosque Arví (ambix)" (freesound_community, Pixabay 17159), 45 s
+- pasos.mp3        ← "Footsteps walking boots tile" (SoundReality, Pixabay 451752): 5 pasos sueltos

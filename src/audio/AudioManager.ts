@@ -1,9 +1,15 @@
 import rugidoUrl from './sounds/rugido.mp3';
 import llamadaUrl from './sounds/llamada.mp3';
 import grunidoUrl from './sounds/grunido.mp3';
+import bosqueUrl from './sounds/bosque.mp3';
+import avesUrl from './sounds/aves.mp3';
+import calmoUrl from './sounds/bosque-calmo.mp3';
+import pasosUrl from './sounds/pasos.mp3';
 
-/** Sonidos grabados de dinosaurios (Pixabay, ver sounds/CREDITOS.txt). */
-const SAMPLES = { rugido: rugidoUrl, llamada: llamadaUrl, grunido: grunidoUrl };
+/** Grabaciones (Pixabay, ver sounds/CREDITOS.txt): dinosaurios, ambiente del bosque y pasos. */
+const SAMPLES = { rugido: rugidoUrl, llamada: llamadaUrl, grunido: grunidoUrl, bosque: bosqueUrl, aves: avesUrl, calmo: calmoUrl, pasos: pasosUrl };
+/** pasos.mp3 tiene 5 pasos seguidos: cada uno dura 0,28 s y empieza cada 0,30 s. */
+const STEP_COUNT = 5, STEP_EVERY = 0.3, STEP_LEN = 0.28;
 type SampleName = keyof typeof SAMPLES;
 
 /**
@@ -35,6 +41,9 @@ export class AudioManager {
   private drone: GainNode | null = null;
   muted = false;
   private readonly samples = new Map<SampleName, AudioBuffer>();
+  /** Ambiente grabado en bucle: bosque y pájaros de día, bosque tranquilo al amanecer y atardecer. */
+  private readonly loops = new Map<SampleName, GainNode>();
+  private lastStep = -1;
 
   /** Debe llamarse tras un gesto del usuario (requisito de los navegadores). */
   start() {
@@ -114,6 +123,11 @@ export class AudioManager {
     const t = this.ctx.currentTime;
     this.night.gain.setTargetAtTime((1 - d) * (1 - this.hushV), t, this.hushV > 0.5 ? 0.6 : 1.5);
     this.dayBed.gain.setTargetAtTime(0.3 + d * 0.7, t, 1.5);
+    // Si algo grande anda cerca, también se calla el bosque.
+    const quiet = 1 - this.hushV * 0.8;
+    this.loops.get('bosque')?.gain.setTargetAtTime(d * 0.55 * quiet, t, 1.5);
+    this.loops.get('aves')?.gain.setTargetAtTime(Math.max(0, d - 0.3) * 0.6 * quiet, t, 1.5);
+    this.loops.get('calmo')?.gain.setTargetAtTime(Math.max(0, 1 - Math.abs(d - 0.45) * 3) * 0.7 * quiet, t, 1.5);
   }
 
   set volume(v: number) {
@@ -268,6 +282,20 @@ export class AudioManager {
   step(inWater: boolean) {
     if (!this.ctx) return;
     const ctx = this.ctx; const t = ctx.currentTime;
+    const buf = this.samples.get('pasos');
+    if (buf && !inWater) {
+      // Un paso grabado distinto cada vez, más apagado (tierra y hojas en vez de suelo duro).
+      let i = Math.floor(Math.random() * STEP_COUNT);
+      if (i === this.lastStep) i = (i + 1) % STEP_COUNT;
+      this.lastStep = i;
+      const src = ctx.createBufferSource(); src.buffer = buf;
+      src.playbackRate.value = 0.85 + Math.random() * 0.15;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1800 + Math.random() * 500;
+      const g = ctx.createGain(); g.gain.value = 0.32;
+      src.connect(lp).connect(g).connect(this.sfx);
+      src.start(t, i * STEP_EVERY, STEP_LEN);
+      return;
+    }
     const n = ctx.createBufferSource(); n.buffer = this.noiseBuf;
     const f = ctx.createBiquadFilter(); f.type = inWater ? 'bandpass' : 'lowpass'; f.frequency.value = inWater ? 1200 : 900 + Math.random() * 300;
     const g = ctx.createGain(); this.env(g, t, inWater ? 0.18 : 0.12, 0.005, inWater ? 0.2 : 0.09);
@@ -405,6 +433,17 @@ export class AudioManager {
         this.samples.set(name, await ctx.decodeAudioData(data));
       } catch (e) { console.warn('[sonido] no se pudo cargar', name, e); }
     }));
+    for (const name of ['bosque', 'aves', 'calmo'] as const) {
+      const buf = this.samples.get(name);
+      if (!buf) continue;
+      const src = ctx.createBufferSource();
+      src.buffer = buf; src.loop = true;
+      const g = ctx.createGain(); g.gain.value = 0;
+      src.connect(g).connect(this.ambience);
+      src.start(0, Math.random() * buf.duration);
+      this.loops.set(name, g);
+    }
+    this.setDaylight(this.daylight);
   }
 
   /** ¿Están cargadas las grabaciones? (útil para pruebas) */
