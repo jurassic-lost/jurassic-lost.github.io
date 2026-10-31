@@ -39,9 +39,19 @@ export const MISSIONS = (): Mission[] => [
     ],
   },
   {
-    // Capítulo 2 (en preparación): el encuentro con Kiro.
+    // Capítulo 2: el encuentro con Kiro.
     id: 'kiro', title: 'Una voz entre los helechos', list: [
-      { id: 'kiro_meet', text: () => 'Busca a la criatura que chilla (capítulo 2, muy pronto)', target: 1, progress: 0, done: false },
+      { id: 'kiro_find', text: () => 'Sigue las huellas diminutas entre los helechos', target: 1, progress: 0, done: false },
+      { id: 'kiro_free', text: () => 'Suelta a la criatura atrapada en las lianas', target: 1, progress: 0, done: false },
+      { id: 'kiro_berries', text: (p) => `Recoge bayas para la criatura (${p}/3)`, target: 3, progress: 0, done: false },
+      { id: 'kiro_feed', text: () => 'Ofrécele las bayas despacio', target: 1, progress: 0, done: false },
+      { id: 'kiro_home', text: () => 'Lleva a Kiro a tu refugio', target: 1, progress: 0, done: false },
+    ],
+  },
+  {
+    // Capítulo 3 (en preparación): los fragmentos del tiempo.
+    id: 'fragmentos', title: 'Los fragmentos del tiempo', list: [
+      { id: 'frag_soon', text: () => 'Busca con Kiro los fragmentos del portal (capítulo 3, muy pronto)', target: 1, progress: 0, done: false },
     ],
   },
 ];

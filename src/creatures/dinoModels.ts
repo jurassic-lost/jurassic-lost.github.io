@@ -260,3 +260,8 @@ export function buildTRex(): DinoRig {
 export function buildCompy(): DinoRig {
   return buildTheropod(0.13, { base: '#7f8a3a', belly: '#d8cf98', back: '#3f4a20', stripes: 10, stripeStrength: 0.6, stripeColor: '#2e3a18' }, false);
 }
+
+/** Kiro: un dinosaurio pequeño y curioso, del tamaño de un perro, con tonos cálidos. */
+export function buildKiro(): DinoRig {
+  return buildTheropod(0.2, { base: '#c27a3a', belly: '#f1dcb0', back: '#6b3f22', stripes: 8, stripeStrength: 0.45, stripeColor: '#4a2a16' }, false);
+}

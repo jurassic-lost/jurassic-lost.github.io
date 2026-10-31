@@ -338,7 +338,8 @@ export class Game {
       this.hud.toast(next ? `🏆 ¡${m.title} completado! Nueva misión: ${next.title}` : `🏆 ¡${m.title} completado!`, true);
       if (next?.id === 'refugio') setTimeout(() => this.hud.toast('🛖 Reúne materiales y abre 🛠 para construir un refugio. Allí podrás dormir a salvo.'), 2500);
       if (next?.id === 'huellas' && this.storyMode && !this.story.has('night_visit')) setTimeout(() => this.hud.toast('🌙 Cuando anochezca, duerme en tu refugio… y escucha con atención.'), 2500);
-      if (next?.id === 'kiro') setTimeout(() => this.hud.toast('🌿 Capítulo 2 muy pronto: ¿quién chilla entre los helechos?', true), 6000);
+      if (next?.id === 'kiro') setTimeout(() => this.hud.toast('🐾 Capítulo 2: sigue las huellas diminutas. Algo pequeño chilla entre los helechos…', true), 6000);
+      if (next?.id === 'fragmentos') setTimeout(() => this.hud.toast('⏳ Capítulo 3 muy pronto: los fragmentos del tiempo. Kiro sabe algo…', true), 7000);
       this.session?.addXp(XP.mission, 'mission');
       // Los materiales que ya llevas cuentan para la nueva misión.
       for (const id of ['wood', 'stone', 'fiber', 'leaves'] as const) this.objectives.setItem(id, this.inventory.get(id));
@@ -977,7 +978,13 @@ export class Game {
     }
     if (this.resting) { this.hud.setPrompt(null); this.input.consume('interact'); return; }
     if (this.story.visiting) { this.hud.setPrompt('Quédate quieto dentro del refugio…', '🤫'); this.input.consume('interact'); return; }
-    // La pieza de la historia tiene prioridad sobre recoger materiales.
+    // Kiro (capítulo 2) y la pieza de la historia tienen prioridad sobre recoger materiales.
+    const kiro = this.storyMode ? this.story.kiroAction(pp) : null;
+    if (kiro) {
+      this.hud.setPrompt(kiro.label, key);
+      if (!this.player.model.busy && this.input.consume('interact')) { this.player.model.playPickup(); kiro.run(); }
+      return;
+    }
     if (this.story.pieceNear(pp)) {
       this.hud.setPrompt('Recoger la pieza metálica que brilla ✨', key);
       if (!this.player.model.busy && this.input.consume('interact')) { this.player.model.playPickup(); void this.story.takePiece(); }
@@ -991,9 +998,14 @@ export class Game {
     if (this.meatFocus) this.hud.setPrompt(`Comer carne 🍖 (+${MEAT_HEALTH} vida)`, key);
     else if (this.focus) {
       const def = ITEMS[this.focus.type];
-      this.hud.setPrompt(def.eatOnPickup ? `Comer ${def.name.toLowerCase()} ${def.icon}` : `Recoger ${def.name.toLowerCase()} ${def.icon}`, key);
+      const forKiro = this.focus.type === 'berries' && this.storyMode && this.story.wantsBerries();
+      this.hud.setPrompt(forKiro ? 'Guardar la baya para la criatura 🫐' : def.eatOnPickup ? `Comer ${def.name.toLowerCase()} ${def.icon}` : `Recoger ${def.name.toLowerCase()} ${def.icon}`, key);
     } else if (this.nearWater) this.hud.setPrompt('Beber agua 💧', key);
-    else this.hud.setPrompt(null);
+    else {
+      const pet = this.storyMode ? this.story.petAction(pp) : null;
+      this.hud.setPrompt(pet ? pet.label : null, key);
+      if (pet && !this.player.model.busy && this.input.consume('interact')) pet.run();
+    }
 
     if (!this.input.consume('interact') || this.player.model.busy) return;
     if (this.meatFocus) {
@@ -1011,7 +1023,8 @@ export class Game {
       this.player.facing = Math.atan2(p.pos.x - pp.x, p.pos.z - pp.z);
       this.collectibles.take(p);
       this.audio.pickup();
-      if (def.eatOnPickup) {
+      if (p.type === 'berries' && this.storyMode && this.story.wantsBerries()) this.story.giveBerry();
+      else if (def.eatOnPickup) {
         this.survival.add(def.eatOnPickup.stat, def.eatOnPickup.amount);
         this.hud.toast(`¡Ñam! +${def.eatOnPickup.amount} hambre ${def.icon}`);
       } else {

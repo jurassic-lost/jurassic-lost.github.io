@@ -7,6 +7,7 @@ import { TREX } from '../creatures/species';
 import type { Shelter } from '../building/Buildings';
 import { clockAt, secondsUntilHour, formatClock } from '../world/DayNight';
 import { NightAmbience } from './NightAmbience';
+import { Kiro } from './Kiro';
 
 /** Estado de la historia que se guarda con la partida. */
 export interface StoryState {
@@ -18,9 +19,11 @@ export interface StoryState {
   cronos: [number, number] | null;
   /** Donde termina el rastro (el camino hacia Kiro). */
   trailEnd: [number, number] | null;
+  /** Dónde está Kiro atrapado entre las lianas (capítulo 2). */
+  kiro: [number, number] | null;
 }
 
-export const newStory = (): StoryState => ({ flags: [], tracks: [], cronos: null, trailEnd: null });
+export const newStory = (): StoryState => ({ flags: [], tracks: [], cronos: null, trailEnd: null, kiro: null });
 
 /** Saca un estado válido de lo que haya en una partida (las antiguas no lo tienen). */
 export function sanitizeStory(s: Partial<StoryState> | undefined): StoryState {
@@ -31,6 +34,7 @@ export function sanitizeStory(s: Partial<StoryState> | undefined): StoryState {
     tracks: Array.isArray(s?.tracks) ? s!.tracks.filter((t) => Array.isArray(t) && t.length === 3 && t.every(ok)).slice(0, 120) : [],
     cronos: pair(s?.cronos),
     trailEnd: pair(s?.trailEnd),
+    kiro: pair(s?.kiro),
   };
 }
 
@@ -121,6 +125,8 @@ export class Story {
   private spooked = false;
   private time = 0;
   private checkT = 0;
+  /** El compañero del capítulo 2 (aparece al final del rastro). */
+  kiro: Kiro | null = null;
 
   constructor(private readonly game: Game) {
     this.group.name = 'story';
@@ -145,6 +151,8 @@ export class Story {
     this.state = sanitizeStory(s);
     this.rebuildPrints();
     this.placePiece();
+    this.kiro?.dispose();
+    this.kiro = null;
   }
 
   export(): StoryState { return structuredClone(this.state); }
@@ -201,6 +209,7 @@ export class Story {
     const m: { x: number; z: number; color: string; size: number }[] = [];
     if (this.state.cronos) m.push({ x: this.state.cronos[0], z: this.state.cronos[1], color: '#7df9ff', size: 3.5 });
     else if (this.has('cronos') && this.state.trailEnd && !this.has('trail_end')) m.push({ x: this.state.trailEnd[0], z: this.state.trailEnd[1], color: '#7df9ff', size: 3.5 });
+    else if (this.has('trail_end') && !this.has('kiro_found') && this.state.kiro) m.push({ x: this.state.kiro[0], z: this.state.kiro[1], color: '#7df9ff', size: 3.5 });
     return m;
   }
 
@@ -476,6 +485,7 @@ export class Story {
     if (this.visiting) this.updateVisit(dt);
     else this.ambience.update(dt, night, pp, g.camera, (p) => g.panOf(p), g.dinos.filter((d) => !d.down), sheltered);
 
+    this.updateKiro(dt);
     if (this.piece) {
       const glint = this.piece.getObjectByName('glint') as THREE.Sprite;
       const s = 0.35 + (Math.sin(this.time * 3) * 0.5 + 0.5) * 0.45;
@@ -487,6 +497,7 @@ export class Story {
     if (this.checkT < 0.3 || this.visiting) return;
     this.checkT = 0;
     // Los objetivos de la misión siguen a lo que ya ha pasado en la historia.
+    this.checkKiro();
     if (g.objectives.current?.id === 'huellas') {
       for (const [f, id] of [['night_visit', 'night_visit'], ['tracks_seen', 'tracks'], ['cronos', 'cronos'], ['trail_end', 'follow_tracks']] as const)
         if (this.has(f)) g.objectives.set(id, 1);
@@ -513,5 +524,125 @@ export class Story {
       this.message('kiro', '«No le tengas miedo. Necesita ayuda… igual que tú.»', 4500);
       void g.save('mission');
     }
+  }
+
+  // ---------------------------------------------------------------- capítulo 2: Kiro
+
+  /** Crea a Kiro cuando toca (al final del rastro, o al cargar una partida en la que ya está). */
+  private updateKiro(dt: number) {
+    if (!this.has('trail_end')) return;
+    const g = this.game;
+    if (!this.kiro) {
+      let x: number, z: number;
+      if (this.state.kiro) [x, z] = this.state.kiro;
+      else {
+        // Unos metros más allá de las huellas diminutas, entre los helechos.
+        const end = this.state.trailEnd ?? [g.player.position.x, g.player.position.z];
+        const tr = this.state.tracks;
+        const last = tr.length ? tr[tr.length - 1] : [end[0] - 1, end[1] - 1];
+        const h = Math.atan2(end[0] - last[0], end[1] - last[1]) + 0.9;
+        x = end[0] + Math.sin(h) * 11; z = end[1] + Math.cos(h) * 11;
+      }
+      const mode = this.has('kiro_friend') ? 'friend' : this.has('kiro_free') ? 'scared' : 'trapped';
+      this.kiro = new Kiro(g, x, z, mode);
+      this.kiro.attach(this.group);
+      if (!this.state.kiro) this.state.kiro = [this.kiro.position.x, this.kiro.position.z];
+      if (mode === 'friend') this.kiro.catchUp();
+    }
+    this.kiro.update(dt);
+  }
+
+  /** Avances del capítulo 2 que dependen de dónde estás (se mira unas veces por segundo). */
+  private checkKiro() {
+    const g = this.game, k = this.kiro, pp = g.player.position;
+    if (g.objectives.current?.id === 'kiro') {
+      for (const [f, id] of [['kiro_found', 'kiro_find'], ['kiro_free', 'kiro_free'], ['kiro_friend', 'kiro_feed'], ['kiro_home', 'kiro_home']] as const)
+        if (this.has(f)) g.objectives.set(id, 1);
+      if (this.has('kiro_friend')) g.objectives.set('kiro_berries', 3);
+    }
+    if (!k) return;
+    const dist = Math.hypot(k.position.x - pp.x, k.position.z - pp.z);
+    if (!this.has('kiro_found') && dist < 8) {
+      this.flag('kiro_found');
+      g.objectives.set('kiro_find', 1);
+      g.audio.chirp(0.3, g.panOf(k.position));
+      g.hud.toast('🌿 ¡Es un dinosaurio pequeñito! Está enredado en unas lianas y no puede soltarse. Chilla de miedo…', true);
+      void g.save('mission');
+    }
+    if (this.has('kiro_friend') && !this.has('kiro_home')) {
+      const home = g.buildings.insideShelter(pp) ?? g.buildings.nearest(pp, 6, true);
+      if (home && dist < 8) {
+        this.flag('kiro_home');
+        g.objectives.set('kiro_home', 1);
+        k.pet();
+        g.hud.toast('🔥 Kiro olfatea tu refugio, da tres vueltas y se acurruca junto a la fogata. Ya no estás solo en la isla.', true);
+        this.message('kiro_home', '«…K-1R0 a salvo… busquen los fragmentos del tiempo… el portal aún puede abrirse…»', 6000);
+        void g.save('mission');
+      }
+    }
+  }
+
+  private objective(id: string) { return this.game.objectives.missions.flatMap((m) => m.list).find((o) => o.id === id); }
+
+  /** Ya tienes las 3 bayas para Kiro. */
+  berriesReady() { return !!this.objective('kiro_berries')?.done; }
+
+  /** Las bayas que recoges ahora se guardan para Kiro en vez de comerlas. */
+  wantsBerries() { return this.has('kiro_free') && !this.has('kiro_friend') && !this.berriesReady(); }
+
+  giveBerry() {
+    const g = this.game;
+    g.objectives.add('kiro_berries');
+    const o = this.objective('kiro_berries');
+    g.hud.toast(o?.done ? '🫐 ¡Ya tienes 3 bayas! Vuelve con la criatura y ofréceselas despacio.' : `🫐 Guardas la baya para la criatura (${o?.progress ?? 0}/3)`);
+  }
+
+  /** Qué puedes hacer ahora con Kiro (para el botón de interactuar), o null. */
+  kiroAction(pp: THREE.Vector3): { label: string; run: () => void } | null {
+    const k = this.kiro;
+    if (!k) return null;
+    const dist = Math.hypot(k.position.x - pp.x, k.position.z - pp.z);
+    if (k.mode === 'trapped' && dist < 2.8) return { label: 'Soltar a la criatura de las lianas 🌿', run: () => this.freeKiro() };
+    if (k.mode === 'scared' && this.berriesReady() && dist < 3.2) return { label: 'Ofrecerle las bayas 🫐', run: () => void this.feedKiro() };
+    return null;
+  }
+
+  /** Acariciar a Kiro (prioridad baja: solo si no hay otra cosa que hacer). */
+  petAction(pp: THREE.Vector3) {
+    const k = this.kiro;
+    if (!k || k.mode !== 'friend' || Math.hypot(k.position.x - pp.x, k.position.z - pp.z) > 1.9) return null;
+    return { label: 'Acariciar a Kiro 🦎', run: () => { k.pet(); this.game.hud.toast('💛 Kiro cierra los ojos y mueve la cola.'); } };
+  }
+
+  private freeKiro() {
+    const g = this.game;
+    if (!this.kiro || this.kiro.mode !== 'trapped') return;
+    this.flag('kiro_free');
+    g.audio.rustle(0.35, g.panOf(this.kiro.position));
+    this.kiro.free();
+    g.objectives.set('kiro_free', 1);
+    setTimeout(() => g.hud.toast('Se suelta de un tirón y corre a esconderse. Está flaquita y tiembla… ¿tendrá hambre? Busca 3 bayas 🫐', true), 900);
+    void g.save('mission');
+  }
+
+  private async feedKiro() {
+    const g = this.game, k = this.kiro;
+    if (!k || k.mode !== 'scared') return;
+    this.flag('kiro_friend');
+    k.setMode('friend');
+    k.pet();
+    g.objectives.set('kiro_feed', 1);
+    if (g.session && !g.session.save.specialItems.includes('kiro')) g.session.save.specialItems.push('kiro');
+    g.input.enabled = false;
+    await g.hud.storyCard('Un nuevo amigo: Kiro',
+      'Come las bayas de tu mano, una por una, y por fin deja de temblar. Al acercarse ves que lleva un collar de metal, ' +
+      'del mismo metal que la pieza CRONOS-047. En la placa pone «K-1R0»… Kiro. ' +
+      'Alguien más estuvo en esta isla antes que tú, y Kiro lo conoció. Ahora te sigue a todas partes y chilla si hay peligro.',
+      '<span class="plate">K-1R0</span>');
+    g.input.flush();
+    g.input.enabled = !g.paused && !g.hotbar.craftOpen;
+    setTimeout(() => { g.audio.signal(0.14); g.hud.phone('«…señal de K-1R0 detectada… no se separen…»'); }, 1500);
+    setTimeout(() => g.hud.toast('🛖 Kiro te sigue. Llévalo a tu refugio para que esté a salvo.'), 9000);
+    void g.save('mission');
   }
 }
