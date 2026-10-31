@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "1.0",
+  "existingSpeciesToAudit": [
+    "Tyrannosaurus",
+    "Triceratops",
+    "Stegosaurus",
+    "Apatosaurus",
+    "Iguanodon",
+    "Compsognathus",
+    "Allosaurus",
+    "Ceratosaurus",
+    "Torvosaurus",
+    "Megalosaurus",
+    "Pterosauria"
+  ],
+  "aiStates": [
+    "IDLE",
+    "PATROL",
+    "INVESTIGATE",
+    "CHASE",
+    "SEARCH",
+    "RETREAT",
+    "REST"
+  ],
+  "archetypes": [
+    {
+      "id": "herbivore",
+      "defaultAggression": "defensive",
+      "rules": [
+        "do_not_attack_on_sight",
+        "flee_or_defend_if_threatened"
+      ]
+    },
+    {
+      "id": "small_carnivore",
+      "defaultAggression": "predatory",
+      "rules": [
+        "investigate_noise",
+        "chase_in_territory",
+        "lose_target_with_occlusion"
+      ]
+    },
+    {
+      "id": "apex_predator",
+      "defaultAggression": "territorial",
+      "rules": [
+        "avoid_defeat_by_basic_weapon",
+        "use_stealth_evasion",
+        "no_wall_vision"
+      ]
+    },
+    {
+      "id": "genesis_mutant_tracker",
+      "stage": "phase_2",
+      "rules": [
+        "enhanced_senses",
+        "original_visual_design"
+      ]
+    },
+    {
+      "id": "genesis_mutant_nocturnal",
+      "stage": "future",
+      "rules": [
+        "prefers_dark_areas"
+      ]
+    },
+    {
+      "id": "genesis_mutant_titan",
+      "stage": "future",
+      "rules": [
+        "large_resistant"
+      ]
+    },
+    {
+      "id": "kiro_companion",
+      "stage": "phase_3",
+      "rules": [
+        "follow",
+        "warn",
+        "find_resources",
+        "trust",
+        "save_state"
+      ]
+    }
+  ]
+}

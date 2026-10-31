@@ -32,6 +32,7 @@ import { Multiplayer, RemotePlayer } from '../net/Multiplayer';
 import nightSkyUrl from '../world/sky/cielo-noche.jpg';
 import dayLightUrl from '../world/sky/luz-dia.jpg';
 import { PostFX } from './PostFX';
+import { Genesis } from '../genesis/Genesis';
 import { patchAtmosphere } from '../world/Atmosphere';
 import { PARTICLE_BUDGET, Particles } from '../world/Particles';
 import { Input } from './Input';
@@ -66,6 +67,8 @@ export class Game {
   private hazardMsg = 0;
   private hazardWarn = 0;
   private lavaSizzle = 0;
+  /** Proyecto Génesis (demo de la ciudad): solo existe al jugar ese modo. */
+  genesis: Genesis | null = null;
   /** Jugar con amigos en la misma isla (salas con código, PeerJS). */
   readonly mp: Multiplayer;
   readonly post: PostFX;
@@ -402,6 +405,7 @@ export class Game {
     this.applySettings();
     this.player.model.setAppearance(session.profile.appearance);
     session.applyTo(this);
+    if (session.mode === 'genesis' && !this.genesis) this.genesis = new Genesis(this);
     this.updateTimeOfDay(true);
     session.onXp = () => this.hud.setExplorer(session.profile.displayName, session.level.level);
     session.onSaved = (ok) => this.hud.saveIndicator(ok);
@@ -439,6 +443,8 @@ export class Game {
 
   start(withIntro = this.storyMode && (this.session?.isNew ?? true)) {
     this.audio.start();
+    // Génesis tiene su propia introducción (en la ciudad), no la de la isla.
+    if (this.genesis) withIntro = false;
     if (!withIntro) { this.begin(false); return; }
     this.playing = false;
     this.input.enabled = false;
@@ -463,8 +469,9 @@ export class Game {
       setTimeout(() => this.hud.toast('📱 Tu celular dice: ERROR TEMPORAL'), 3800);
       this.story.afterIntro();
     }
-    document.getElementById('objective')!.classList.toggle('hidden', !this.storyMode);
-    document.getElementById('btn-friends')!.classList.toggle('hidden', this.storyMode);
+    document.getElementById('objective')!.classList.toggle('hidden', !this.storyMode && !this.genesis);
+    document.getElementById('btn-friends')!.classList.toggle('hidden', this.storyMode || !!this.genesis);
+    if (this.genesis) { this.genesis.begin(); return; }
     if (!this.storyMode) {
       // Mundo abierto: sin trama; se abre directamente la pantalla de salas.
       setTimeout(() => this.hud.toast('🌍 Mundo abierto: crea una sala o entra en la de un amigo', true), 300);
@@ -474,6 +481,7 @@ export class Game {
 
   /** Vuelve a ver la introducción desde el menú de pausa. */
   replayIntro() {
+    if (this.genesis) { this.setPaused(false); this.hud.toast('La introducción de la isla no está en el Proyecto Génesis.'); return; }
     this.paused = false;
     this.survival.frozen = false;
     document.getElementById('pause-menu')!.classList.add('hidden');
@@ -533,6 +541,7 @@ export class Game {
     const dt = Math.min(0.05, this.clock.getDelta());
     if (this.paused) return;
     if (this.input.consume('pause')) { this.setPaused(true); return; }
+    if (this.genesis) { this.genesis.frame(dt); return; }
     this.input.update();
     const [lx, ly, zoom] = this.input.consumeLook();
     this.cam.rotate(lx, ly, zoom);
@@ -844,7 +853,7 @@ export class Game {
     this.env.setTime(c);
     this.audio.setDaylight(c.daylight);
     this.hud.setClock(c);
-    if (force) { this.wasNight = c.night; return; }
+    if (force || this.genesis) { this.wasNight = c.night; return; }
     if (c.hour === 18 && this.duskWarned !== c.day && this.playing && !this.resting) {
       this.duskWarned = c.day;
       this.hud.toast(this.buildings.shelters.some((s) => s.built)

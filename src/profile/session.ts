@@ -4,9 +4,9 @@ import { PLAY_LIMIT, SPAWN } from '../world/config';
 import { regionAt, regionName } from '../world/regions';
 import { daysSurvived } from '../world/DayNight';
 import { XP, levelFor } from './experience';
-import { openWorldId, type PersistenceService } from './persistence';
+import { genesisId, openWorldId, type PersistenceService } from './persistence';
 
-export type GameMode = 'historia' | 'abierto';
+export type GameMode = 'historia' | 'abierto' | 'genesis';
 import { GameSave, Profile, SCHEMA_VERSION, newCompanion } from './types';
 
 export { DAY_SECONDS } from '../world/DayNight';
@@ -35,7 +35,8 @@ export class PlayerSession {
    *   con su propia partida guardada aparte).
    */
   constructor(readonly profile: Profile, private readonly store: PersistenceService, existing: GameSave | null, readonly mode: GameMode = 'historia') {
-    this.save = existing ?? PlayerSession.blank(mode === 'abierto' ? openWorldId(profile.id) : profile.id);
+    this.save = existing ?? PlayerSession.blank(mode === 'abierto' ? openWorldId(profile.id) : mode === 'genesis' ? genesisId(profile.id) : profile.id);
+    if (mode === 'genesis') { this.save.campaignId = 'genesis_city'; this.save.worldId = 'ciudad_sector_piloto'; }
     this.revision = this.save.revision;
   }
 
@@ -121,7 +122,9 @@ export class PlayerSession {
 
   /** Empieza de cero la partida de este perfil (se guarda una partida vacía). */
   async reset() {
-    this.save = PlayerSession.blank(this.profile.id);
+    // Se reinicia la partida de este modo (no la de los otros modos).
+    this.save = PlayerSession.blank(this.save.profileId);
+    if (this.mode === 'genesis') { this.save.campaignId = 'genesis_city'; this.save.worldId = 'ciudad_sector_piloto'; }
     this.save.revision = ++this.revision;
     await this.store.saveGame(structuredClone(this.save)).catch(() => {});
   }
@@ -147,11 +150,13 @@ export class PlayerSession {
     if (this.safeT > 2) {
       this.safeT = 0;
       const hunted = game.dinos.some((d) => d.threatening && d.position.distanceTo(p) < 40);
-      if (game.player.grounded && !game.player.inWater && !hunted && PlayerSession.safeSpot(game, p.x, p.z)) s.world.lastSafe = [p.x, p.z];
+      if (this.mode !== 'genesis' && game.player.grounded && !game.player.inWater && !hunted && PlayerSession.safeSpot(game, p.x, p.z)) s.world.lastSafe = [p.x, p.z];
     }
 
     this.scanT += dt;
     if (this.scanT < 0.5) return;
+    // En la ciudad no hay regiones de la isla ni dinosaurios que descubrir todavía.
+    if (this.mode === 'genesis') return;
     this.scanT = 0;
     const r = regionAt(p.x, p.z);
     if (!s.progress.unlockedRegions.includes(r.id)) {

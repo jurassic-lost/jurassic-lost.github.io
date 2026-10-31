@@ -381,3 +381,7 @@ body.touch #hotbar > * { width: 44px; height: 44px; min-height: 0; padding: 0; f
 @media (max-width: 700px) and (min-height: 501px) {
   body.touch .toast, body.touch .toast.big { font-size: 13px; padding: 5px 12px; }
 }
+
+/* ---------- Proyecto Génesis (ciudad) ---------- */
+.genesis-off { display: none !important; }
+#touch.genesis-cine { opacity: 0.25; pointer-events: none; }

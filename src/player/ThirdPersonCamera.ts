@@ -29,7 +29,10 @@ export class ThirdPersonCamera {
     for (let d = 1.2; d < this.distance; d += step) {
       const x = this.target.x + dirX * d, y = this.target.y + dirY * d, z = this.target.z + dirZ * d;
       for (const c of this.collisions.query(x, z, 1, hits)) {
-        if (c.top > y && Math.hypot(x - c.x, z - c.z) < c.r + 0.25) return Math.max(1.2, d - step);
+        if (c.hx !== undefined) {
+          // Paredes de la ciudad: la cámara se acerca más (las habitaciones son pequeñas).
+          if (c.top > y && Math.abs(x - c.x) < c.hx + 0.2 && Math.abs(z - c.z) < c.hz! + 0.2) return Math.max(0.6, d - step);
+        } else if (c.top > y && Math.hypot(x - c.x, z - c.z) < c.r + 0.25) return Math.max(1.2, d - step);
       }
     }
     return this.distance;

@@ -1,0 +1,79 @@
+{
+  "schemaVersion": "1.0",
+  "sequences": [
+    {
+      "id": "opening_noise",
+      "region": "protagonist_bedroom",
+      "skippable": true,
+      "beats": [
+        {
+          "type": "ambient_audio",
+          "assetPlaceholder": "sirens_distant"
+        },
+        {
+          "type": "ambient_audio",
+          "assetPlaceholder": "vehicle_collision"
+        },
+        {
+          "type": "lighting_event",
+          "id": "lights_flicker"
+        },
+        {
+          "type": "objective",
+          "mission": "M01"
+        }
+      ]
+    },
+    {
+      "id": "street_attack",
+      "region": "residential_pilot",
+      "skippable": true,
+      "beats": [
+        {
+          "type": "npc_action",
+          "action": "run_along_street"
+        },
+        {
+          "type": "creature_action",
+          "action": "pursue_npc"
+        },
+        {
+          "type": "camera_cut",
+          "framing": "protagonist_reaction_not_graphic"
+        },
+        {
+          "type": "audio_event",
+          "id": "brief_scream_fade"
+        },
+        {
+          "type": "creature_action",
+          "action": "turn_toward_house"
+        },
+        {
+          "type": "objective",
+          "mission": "M02"
+        }
+      ],
+      "nonGraphic": true,
+      "fallback": "use_existing_placeholder_dino_and_npc_until_assets_ready"
+    },
+    {
+      "id": "daybreak_warning",
+      "region": "protagonist_house",
+      "beats": [
+        {
+          "type": "lighting_event",
+          "id": "dawn"
+        },
+        {
+          "type": "ui_message",
+          "id": "fictional_emergency_alert"
+        },
+        {
+          "type": "objective",
+          "mission": "M03"
+        }
+      ]
+    }
+  ]
+}

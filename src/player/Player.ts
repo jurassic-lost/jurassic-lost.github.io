@@ -25,6 +25,8 @@ export class Player {
   inWater = false;
   /** Velocidad horizontal actual (m/s). */
   speed = 0;
+  /** Límites para caminar (la ciudad del Proyecto Génesis); sin ellos, los de la isla. */
+  bounds: { x0: number; x1: number; z0: number; z1: number } | null = null;
   /** Multiplicador de velocidad del terreno (la brea frena). */
   slow = 1;
   /** Se llama al aterrizar con la velocidad vertical de impacto. */
@@ -87,8 +89,14 @@ export class Player {
     }
 
     const support = this.collisions.resolve(this.position, RADIUS);
-    this.position.x = Math.max(-PLAY_LIMIT, Math.min(PLAY_LIMIT, this.position.x));
-    this.position.z = Math.max(-PLAY_LIMIT, Math.min(PLAY_LIMIT, this.position.z));
+    const b = this.bounds;
+    if (b) {
+      this.position.x = Math.max(b.x0, Math.min(b.x1, this.position.x));
+      this.position.z = Math.max(b.z0, Math.min(b.z1, this.position.z));
+    } else {
+      this.position.x = Math.max(-PLAY_LIMIT, Math.min(PLAY_LIMIT, this.position.x));
+      this.position.z = Math.max(-PLAY_LIMIT, Math.min(PLAY_LIMIT, this.position.z));
+    }
 
     const ground = Math.max(this.terrain.heightAt(this.position.x, this.position.z), support);
     const wasGrounded = this.grounded;

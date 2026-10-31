@@ -3,7 +3,7 @@ import { isTouchDevice } from '../core/Settings';
 import { FRAGMENTS_TOTAL, GameSave, MAX_PROFILES, Profile, SCHEMA_VERSION } from '../profile/types';
 import { HAIR_COLORS, HAIR_STYLES, OUTFIT_NAMES, PANTS_COLORS, SHIRT_COLORS, SKIN_TONES, defaultAppearance, defaultSettings, sanitizeAppearance, starterOutfit } from '../profile/appearance';
 import { checkName } from '../profile/nameFilter';
-import { PersistenceService, newId, openWorldId } from '../profile/persistence';
+import { PersistenceService, genesisId, newId, openWorldId } from '../profile/persistence';
 import { PlayerSession, type GameMode } from '../profile/session';
 import { daysSurvived } from '../world/DayNight';
 import { MISSIONS } from '../core/Objectives';
@@ -71,6 +71,7 @@ export class MainMenu {
     $('welcome').classList.toggle('hidden', !a);
     $('btn-continue').classList.toggle('hidden', !a);
     $('btn-open-world').classList.toggle('hidden', !a);
+    $('btn-genesis').classList.toggle('hidden', !a);
     $('btn-character').textContent = a ? 'MI PERSONAJE' : 'MI PERSONAJE';
     $('btn-new').classList.toggle('primary', !a);
     if (a) {
@@ -116,6 +117,12 @@ export class MainMenu {
       if (!this.active) return;
       const p = this.active.profile;
       this.play(p, await this.store.loadGame(openWorldId(p.id)).catch(() => null), 'abierto');
+    };
+    // Proyecto Génesis (demo de la ciudad): partida propia; la isla y sus partidas no se tocan.
+    $('btn-genesis').onclick = async () => {
+      if (!this.active) return;
+      const p = this.active.profile;
+      this.play(p, await this.store.loadGame(genesisId(p.id)).catch(() => null), 'genesis');
     };
     $('btn-new').onclick = () => {
       if (this.summaries.length >= MAX_PROFILES) { this.status('⚠️ Ya hay 3 perfiles. Borra uno con 🗑 para crear otro.', 'menu'); return; }

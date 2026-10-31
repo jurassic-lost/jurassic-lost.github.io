@@ -251,6 +251,7 @@ export class HUD {
 
   /** Descubre el mapa alrededor del jugador (radio en metros). */
   reveal(x: number, z: number, radius = 36) {
+    if (!this.useFog) return;
     const n = HUD.FOG_N, size = (WORLD_HALF * 2) / n;
     for (let dz = -radius; dz <= radius; dz += size / 2) {
       for (let dx = -radius; dx <= radius; dx += size / 2) {
@@ -297,13 +298,34 @@ export class HUD {
     return this.fog;
   }
 
+  /** Mapa activo: la isla (por defecto) o la ciudad del Proyecto Génesis, con su centro y medio lado. */
+  private mapCX = 0;
+  private mapCZ = 0;
+  private mapHalf = WORLD_HALF;
+  private useFog = true;
+
+  /** Cambia el mapa (ciudad): imagen cuadrada que cubre centro ± half; sin niebla de exploración. */
+  setMap(image: HTMLCanvasElement, cx: number, cz: number, half: number, legendHtml?: string) {
+    this.mapImage = image;
+    this.mapCX = cx; this.mapCZ = cz; this.mapHalf = half;
+    this.useFog = false;
+    const leg = document.querySelector('#bigmap .legend');
+    if (leg && legendHtml) leg.innerHTML = legendHtml;
+    const title = document.querySelector('#bigmap h3, #bigmap .bigmap-title');
+    if (title) title.textContent = '🗺 Mapa del barrio';
+  }
+
   /** Mapa grande de toda la isla: solo se ve lo explorado, con el jugador y los refugios. */
   private drawBigMap(px: number, pz: number, arrow: number, markers: MapMarker[]) {
     const c = this.bigCanvas, ctx = c.getContext('2d')!, W = c.width;
     ctx.drawImage(this.mapImage, 0, 0, W, W);
     ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(this.fogImage(), 0, 0, W, W);
-    const k = W / (WORLD_HALF * 2), at = (x: number) => (x + WORLD_HALF) * k;
+    if (this.useFog) ctx.drawImage(this.fogImage(), 0, 0, W, W);
+    const H = this.mapHalf, k = W / (H * 2);
+    px -= this.mapCX; pz -= this.mapCZ;
+    const cx = this.mapCX, cz = this.mapCZ;
+    markers = markers.map((m) => ({ ...m, x: m.x - cx, z: m.z - cz }));
+    const at = (x: number) => (x + H) * k;
     for (const m of markers) {
       if (m.icon) { this.drawIcon(ctx, m, at(m.x), at(m.z), 22); continue; }
       ctx.fillStyle = m.color;
@@ -336,15 +358,20 @@ export class HUD {
   drawMinimap(px: number, pz: number, arrow: number, markers: MapMarker[]) {
     if (this.mapOpen) this.drawBigMap(px, pz, arrow, markers);
     const ctx = this.mapCtx, W = this.mapCanvas.width;
-    const range = 90; // metros visibles desde el centro
-    const scale = this.mapImage.width / (WORLD_HALF * 2);
-    const sx = (px + WORLD_HALF) * scale - range * scale, sz = (pz + WORLD_HALF) * scale - range * scale;
-    ctx.fillStyle = '#22381f';
+    const H = this.mapHalf;
+    px -= this.mapCX; pz -= this.mapCZ;
+    if (this.mapCX || this.mapCZ) { const cx = this.mapCX, cz = this.mapCZ; markers = markers.map((m) => ({ ...m, x: m.x - cx, z: m.z - cz })); }
+    const range = this.useFog ? 90 : 45; // metros visibles desde el centro (en la ciudad, más cerca)
+    const scale = this.mapImage.width / (H * 2);
+    const sx = (px + H) * scale - range * scale, sz = (pz + H) * scale - range * scale;
+    ctx.fillStyle = this.useFog ? '#22381f' : '#3a3a36';
     ctx.fillRect(0, 0, W, W);
     ctx.drawImage(this.mapImage, sx, sz, range * 2 * scale, range * 2 * scale, 0, 0, W, W);
-    const fk = HUD.FOG_N / (WORLD_HALF * 2);
-    ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(this.fogImage(), (px - range + WORLD_HALF) * fk, (pz - range + WORLD_HALF) * fk, range * 2 * fk, range * 2 * fk, 0, 0, W, W);
+    if (this.useFog) {
+      const fk = HUD.FOG_N / (WORLD_HALF * 2);
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(this.fogImage(), (px - range + WORLD_HALF) * fk, (pz - range + WORLD_HALF) * fk, range * 2 * fk, range * 2 * fk, 0, 0, W, W);
+    }
     const toMap = (x: number, z: number) => [W / 2 + ((x - px) / range) * (W / 2), W / 2 + ((z - pz) / range) * (W / 2)];
     for (const m of markers) {
       const [mx, my] = toMap(m.x, m.z);

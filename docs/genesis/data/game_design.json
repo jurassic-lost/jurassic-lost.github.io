@@ -1,0 +1,94 @@
+{
+  "schemaVersion": "1.0",
+  "gameId": "perdido-en-el-jurasico",
+  "workingTitle": "Perdido en el Jurásico: Proyecto Génesis",
+  "genre": [
+    "survival-horror",
+    "adventure",
+    "open-world",
+    "science-fiction"
+  ],
+  "engineConstraints": {
+    "keepExistingEngine": true,
+    "knownEngine": "Three.js",
+    "language": "TypeScript",
+    "platforms": [
+      "web",
+      "android_future"
+    ],
+    "maxPreliminaryPrototypeBlocks": 8,
+    "mobileGraphicsPresets": [
+      "low",
+      "medium",
+      "high"
+    ]
+  },
+  "campaigns": [
+    {
+      "id": "genesis_city",
+      "title": "Proyecto Génesis",
+      "defaultWorld": "nuevo_laredo_fictional",
+      "startRegion": "residential_pilot",
+      "startSpawn": "protagonist_bedroom",
+      "status": "new"
+    },
+    {
+      "id": "jurassic_island_legacy",
+      "title": "Mundo prehistórico (legado)",
+      "status": "preserve",
+      "futureNarrativeRole": "reserva_genesis"
+    }
+  ],
+  "player": {
+    "genderSelection": [
+      "boy",
+      "girl"
+    ],
+    "nameModeration": true,
+    "appearanceCustomization": true,
+    "localProfilesTarget": 3,
+    "startingAgeVisual": "adolescent, approx 13",
+    "realAddressProhibited": true
+  },
+  "persistence": {
+    "versionedSave": true,
+    "migrationRequired": true,
+    "preserveLegacySaves": true,
+    "offlineIndexedDBExisting": true,
+    "noSilentReset": true
+  },
+  "firstPlayableMilestone": {
+    "name": "urban_intro_vertical_slice",
+    "targetExperienceMinutes": [
+      10,
+      15
+    ],
+    "features": [
+      "existing_profile_menu",
+      "bedroom_3d",
+      "urban_neighborhood",
+      "cutscene_pursuit_non_graphic",
+      "hide_tutorial",
+      "daybreak",
+      "loot",
+      "shelter",
+      "autosave"
+    ]
+  },
+  "style": {
+    "tone": [
+      "suspense",
+      "mystery",
+      "urban-survival"
+    ],
+    "gore": false,
+    "visuals": "cinematic semi-realistic optimized for mobile",
+    "noCopiedFranchiseDesigns": true
+  },
+  "sourcePolicy": {
+    "streets": "OpenStreetMap license ODbL; verify attribution and derived database obligations",
+    "elevation": "INEGI; verify dataset terms",
+    "buildings": "own original modular 3D",
+    "googleContent": "do not scrape/extract/recreate 3D content"
+  }
+}

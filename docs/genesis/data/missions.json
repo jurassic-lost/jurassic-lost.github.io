@@ -1,0 +1,283 @@
+{
+  "schemaVersion": "1.0",
+  "missionStateEnum": [
+    "locked",
+    "available",
+    "active",
+    "complete",
+    "failed"
+  ],
+  "missions": [
+    {
+      "id": "M01",
+      "title": "Investiga el ruido",
+      "regionId": "protagonist_bedroom",
+      "requires": [],
+      "objectives": [
+        {
+          "id": "walk_to_window",
+          "type": "game_event",
+          "target": 1
+        },
+        {
+          "id": "inspect_street",
+          "type": "game_event",
+          "target": 1
+        }
+      ],
+      "unlocks": [
+        "M02"
+      ],
+      "persistence": true
+    },
+    {
+      "id": "M02",
+      "title": "¡Escóndete!",
+      "regionId": "protagonist_house",
+      "requires": [
+        "M01"
+      ],
+      "objectives": [
+        {
+          "id": "move_from_window",
+          "type": "game_event",
+          "target": 1
+        },
+        {
+          "id": "switch_off_lights",
+          "type": "game_event",
+          "target": 1
+        },
+        {
+          "id": "enter_hide_spot",
+          "type": "game_event",
+          "target": 1
+        },
+        {
+          "id": "wait_until_creature_leaves",
+          "type": "game_event",
+          "target": 1
+        }
+      ],
+      "unlocks": [
+        "M03"
+      ],
+      "persistence": true
+    },
+    {
+      "id": "M03",
+      "title": "Sobrevive al amanecer",
+      "regionId": "protagonist_house",
+      "requires": [
+        "M02"
+      ],
+      "objectives": [
+        {
+          "id": "receive_emergency_broadcast",
+          "type": "game_event",
+          "target": 1
+        },
+        {
+          "id": "exit_house_safely",
+          "type": "game_event",
+          "target": 1
+        }
+      ],
+      "unlocks": [
+        "M04"
+      ],
+      "persistence": true
+    },
+    {
+      "id": "M04",
+      "title": "Encuentra suministros",
+      "regionId": "residential_pilot",
+      "requires": [
+        "M03"
+      ],
+      "objectives": [
+        {
+          "id": "collect_water",
+          "type": "game_event",
+          "target": 1
+        },
+        {
+          "id": "collect_food",
+          "type": "game_event",
+          "target": 1
+        },
+        {
+          "id": "collect_flashlight",
+          "type": "game_event",
+          "target": 1
+        }
+      ],
+      "unlocks": [
+        "M05"
+      ],
+      "persistence": true
+    },
+    {
+      "id": "M05",
+      "title": "Prepara un refugio",
+      "regionId": "residential_pilot",
+      "requires": [
+        "M04"
+      ],
+      "objectives": [
+        {
+          "id": "secure_room",
+          "type": "game_event",
+          "target": 1
+        },
+        {
+          "id": "place_supplies",
+          "type": "game_event",
+          "target": 1
+        },
+        {
+          "id": "save_or_rest",
+          "type": "game_event",
+          "target": 1
+        }
+      ],
+      "unlocks": [
+        "M06"
+      ],
+      "persistence": true
+    },
+    {
+      "id": "M06",
+      "title": "Ayuda a un superviviente",
+      "regionId": "residential_pilot",
+      "requires": [
+        "M05"
+      ],
+      "objectives": [
+        {
+          "id": "locate_npc",
+          "type": "game_event",
+          "target": 1
+        },
+        {
+          "id": "clear_safe_route",
+          "type": "game_event",
+          "target": 1
+        },
+        {
+          "id": "escort_to_shelter",
+          "type": "game_event",
+          "target": 1
+        }
+      ],
+      "unlocks": [
+        "M07"
+      ],
+      "persistence": true
+    },
+    {
+      "id": "M07",
+      "title": "Investiga la transmisión",
+      "regionId": "residential_pilot",
+      "requires": [
+        "M06"
+      ],
+      "objectives": [
+        {
+          "id": "find_radio",
+          "type": "game_event",
+          "target": 1
+        },
+        {
+          "id": "repair_radio",
+          "type": "game_event",
+          "target": 1
+        },
+        {
+          "id": "listen_message",
+          "type": "game_event",
+          "target": 1
+        }
+      ],
+      "unlocks": [
+        "M08"
+      ],
+      "persistence": true
+    },
+    {
+      "id": "M08",
+      "title": "Descubre las pistas de Génesis",
+      "regionId": "industrial_future",
+      "requires": [
+        "M07"
+      ],
+      "objectives": [
+        {
+          "id": "find_document",
+          "type": "game_event",
+          "target": 1
+        },
+        {
+          "id": "decode_lab_reference",
+          "type": "game_event",
+          "target": 1
+        }
+      ],
+      "unlocks": [
+        "M09"
+      ],
+      "persistence": true
+    },
+    {
+      "id": "M09",
+      "title": "Rescata a Kiro",
+      "regionId": "industrial_future",
+      "requires": [
+        "M08"
+      ],
+      "objectives": [
+        {
+          "id": "locate_kiro",
+          "type": "game_event",
+          "target": 1
+        },
+        {
+          "id": "release_kiro",
+          "type": "game_event",
+          "target": 1
+        },
+        {
+          "id": "gain_trust",
+          "type": "game_event",
+          "target": 1
+        }
+      ],
+      "unlocks": [
+        "M10"
+      ],
+      "persistence": true
+    },
+    {
+      "id": "M10",
+      "title": "Explora el siguiente sector",
+      "regionId": "urban_expansion_future",
+      "requires": [
+        "M09"
+      ],
+      "objectives": [
+        {
+          "id": "open_region_route",
+          "type": "game_event",
+          "target": 1
+        },
+        {
+          "id": "reach_checkpoint",
+          "type": "game_event",
+          "target": 1
+        }
+      ],
+      "unlocks": [],
+      "persistence": true
+    }
+  ]
+}

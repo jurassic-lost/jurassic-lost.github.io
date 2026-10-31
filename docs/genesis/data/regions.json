@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "1.0",
+  "worlds": [
+    {
+      "id": "nuevo_laredo_fictional",
+      "note": "inspired by Nuevo Laredo; not 1:1 copy",
+      "regions": [
+        {
+          "id": "residential_pilot",
+          "stage": "phase_1",
+          "approxBlocks": [
+            4,
+            8
+          ],
+          "playerAccessibleInitially": "compact bounded sector",
+          "landmarks": [
+            "house",
+            "neighborhood_store",
+            "park",
+            "main_avenue",
+            "blocked_exit",
+            "safe_house"
+          ],
+          "geodataSources": [
+            "OSM",
+            "INEGI_optional"
+          ],
+          "exactHouseLocations": false
+        },
+        {
+          "id": "industrial_future",
+          "stage": "phase_3",
+          "landmarks": [
+            "warehouse",
+            "fictional_genesis_lab"
+          ]
+        },
+        {
+          "id": "urban_expansion_future",
+          "stage": "phase_4",
+          "landmarks": [
+            "commercial_center",
+            "hospital_fictional",
+            "parking_garage",
+            "evacuation_road"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "jurassic_island_legacy",
+      "stage": "preserve",
+      "narrativeAlias": "Reserva Génesis",
+      "reuseExisting": [
+        "jungle",
+        "river",
+        "lake",
+        "volcano",
+        "plants",
+        "dinosaurs",
+        "shelters"
+      ]
+    }
+  ]
+}

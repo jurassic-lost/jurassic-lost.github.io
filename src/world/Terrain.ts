@@ -150,8 +150,16 @@ export class Terrain {
     this.waterNormal.offset.y += dt * 0.011;
   }
 
+  /**
+   * Zona plana fuera de la isla (la ciudad del Proyecto Génesis). Dentro de ella el suelo
+   * está a la altura `h` y no hay agua; fuera, la isla sigue igual que siempre.
+   */
+  flatZone: { x0: number; x1: number; z0: number; z1: number; h: number } | null = null;
+
   /** Altura del suelo en (x, z) interpolando la malla (coincide con lo que se ve). */
   heightAt(x: number, z: number): number {
+    const f = this.flatZone;
+    if (f && x >= f.x0 && x <= f.x1 && z >= f.z0 && z <= f.z1) return f.h;
     const n = this.seg + 1;
     const fx = (x + WORLD_HALF) / this.cell;
     const fz = (z + WORLD_HALF) / this.cell;

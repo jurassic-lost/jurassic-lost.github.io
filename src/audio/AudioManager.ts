@@ -117,10 +117,19 @@ export class AudioManager {
   }
 
   /** Mezcla del ambiente según la hora: pájaros e insectos de día, grillos y ranas de noche. */
+  /** Ciudad (Proyecto Génesis): sin pájaros ni ranas de la selva; solo grillos suaves de noche. */
+  urban = false;
+
   setDaylight(d: number) {
     this.daylight = d;
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
+    if (this.urban) {
+      this.night.gain.setTargetAtTime((1 - d) * 0.35 * (1 - this.hushV), t, 1.2);
+      this.dayBed.gain.setTargetAtTime(0.08, t, 1.5);
+      for (const n of ['bosque', 'aves', 'calmo'] as const) this.loops.get(n)?.gain.setTargetAtTime(0, t, 0.8);
+      return;
+    }
     this.night.gain.setTargetAtTime((1 - d) * (1 - this.hushV), t, this.hushV > 0.5 ? 0.6 : 1.5);
     this.dayBed.gain.setTargetAtTime(0.3 + d * 0.7, t, 1.5);
     // Si algo grande anda cerca, también se calla el bosque.
@@ -151,9 +160,9 @@ export class AudioManager {
     if (!this.ctx || this.ctx.state !== 'running') return;
     this.nextBird -= dt;
     this.nextRumble -= dt;
-    if (this.nextBird <= 0) { if (this.daylight > 0.3) this.bird(); this.nextBird = 2 + Math.random() * 6; }
+    if (this.nextBird <= 0) { if (this.daylight > 0.3) this.bird(); this.nextBird = (this.urban ? 8 : 2) + Math.random() * 6; }
     this.nextNight -= dt;
-    if (this.nextNight <= 0) { if (this.daylight < 0.4 && this.hushV < 0.5) this.frog(); this.nextNight = 1.5 + Math.random() * 4; }
+    if (this.nextNight <= 0) { if (!this.urban && this.daylight < 0.4 && this.hushV < 0.5) this.frog(); this.nextNight = 1.5 + Math.random() * 4; }
     if (this.nextRumble <= 0) { this.distantCall(); this.nextRumble = 40 + Math.random() * 50; }
   }
 
@@ -422,6 +431,68 @@ export class AudioManager {
     const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine';
     o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(50, t + 0.18);
     this.env(g, t, volume, 0.005, 0.2); o.connect(g).connect(this.sfx); o.start(t); o.stop(t + 0.25);
+  }
+
+  // ---------------------------------------------------------------- ciudad (Proyecto Génesis)
+
+  /** Sirena lejana (sube y baja) durante unos segundos. */
+  siren(seconds = 6, volume = 0.12, pan = 0.4) {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const o = ctx.createOscillator(); o.type = 'triangle';
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.45;
+    const lg = ctx.createGain(); lg.gain.value = 260;
+    lfo.connect(lg).connect(o.frequency);
+    o.frequency.value = 820;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(volume, t + 1.5);
+    g.gain.setValueAtTime(volume, t + seconds - 2);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + seconds);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1800;
+    const p = ctx.createStereoPanner(); p.pan.value = pan;
+    o.connect(lp).connect(g).connect(p).connect(this.sfx);
+    p.connect(this.reverb);
+    o.start(t); lfo.start(t); o.stop(t + seconds); lfo.stop(t + seconds);
+  }
+
+  /** Choque de autos a lo lejos: golpe grave, cristales y chatarra (sin nada más). */
+  crash(volume = 0.5, pan = 0.3) {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const p = ctx.createStereoPanner(); p.pan.value = pan; p.connect(this.sfx); p.connect(this.reverb);
+    const o = ctx.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(35, t + 0.5);
+    const g = ctx.createGain(); this.env(g, t, volume, 0.005, 0.6); o.connect(g).connect(p); o.start(t); o.stop(t + 0.7);
+    for (const [f, d, v] of [[900, 0.5, 0.5], [3500, 0.9, 0.25]] as const) {
+      const n = ctx.createBufferSource(); n.buffer = this.noiseBuf;
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = 0.8;
+      const ng = ctx.createGain(); this.env(ng, t + 0.02, volume * v, 0.01, d);
+      n.connect(bp).connect(ng).connect(p); n.start(t); n.stop(t + d + 0.1);
+    }
+  }
+
+  /** Grito breve y lejano que se apaga (sin mostrar nada: se oye desde la casa). */
+  distantShout(volume = 0.08, pan = 0.2) {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const o = ctx.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(520, t); o.frequency.linearRampToValueAtTime(760, t + 0.25); o.frequency.linearRampToValueAtTime(600, t + 0.6);
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1100; f.Q.value = 4;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1600;
+    const g = ctx.createGain(); this.env(g, t, volume, 0.04, 0.6);
+    const p = ctx.createStereoPanner(); p.pan.value = pan;
+    o.connect(f).connect(lp).connect(g).connect(p).connect(this.reverb);
+    o.start(t); o.stop(t + 0.75);
+  }
+
+  /** Interruptor de la luz. */
+  click(volume = 0.15) {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const n = ctx.createBufferSource(); n.buffer = this.noiseBuf;
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 2500;
+    const g = ctx.createGain(); this.env(g, t, volume, 0.001, 0.03);
+    n.connect(hp).connect(g).connect(this.sfx); n.start(t); n.stop(t + 0.05);
   }
 
   /** Silencio repentino de la selva (h = 1: no se oye ni un grillo). */

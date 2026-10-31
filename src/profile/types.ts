@@ -99,6 +99,15 @@ export interface GameSave {
   specialItems: string[];
   constructions: Construction[];
   companion: CompanionState;
+  /**
+   * Campaña de esta partida. Las partidas anteriores no lo tienen y son 'jurassic_island_legacy'.
+   * Proyecto Génesis guarda en una partida aparte ('genesis_city'), nunca encima de la isla.
+   */
+  campaignId?: 'jurassic_island_legacy' | 'genesis_city';
+  /** Mundo donde está el jugador ('isla' o 'ciudad_sector_piloto'). */
+  worldId?: string;
+  /** Estado del Proyecto Génesis (misiones M01–M05, objetos de la casa, etc.). */
+  genesis?: import('../genesis/state').GenesisState;
   /** Historia (capítulo 1 en adelante). Las partidas anteriores no lo tienen: se crea vacío. */
   story?: import('../story/Story').StoryState;
   world: {

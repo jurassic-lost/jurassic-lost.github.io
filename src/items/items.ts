@@ -1,5 +1,7 @@
 /** Catálogo de objetos recolectables (madera, piedra, fibra, hojas y fruta) y fabricables. */
-export type ItemId = 'wood' | 'stone' | 'berries' | 'fiber' | 'leaves' | 'club' | 'spear' | 'sling' | 'bow' | 'arrows';
+export type ItemId = 'wood' | 'stone' | 'berries' | 'fiber' | 'leaves' | 'club' | 'spear' | 'sling' | 'bow' | 'arrows'
+  // Proyecto Génesis (ciudad)
+  | 'water_bottle' | 'canned_food' | 'flashlight';
 
 export interface ItemDef {
   id: ItemId;
@@ -20,6 +22,9 @@ export const ITEMS: Record<ItemId, ItemDef> = {
   sling: { id: 'sling', name: 'Honda', icon: '🪢', description: 'Lanza piedras a distancia. Usa piedras como munición.' },
   bow: { id: 'bow', name: 'Arco', icon: '🏹', description: 'Dispara flechas lejos y con fuerza.' },
   arrows: { id: 'arrows', name: 'Flechas', icon: '➶', description: 'Munición para el arco.' },
+  water_bottle: { id: 'water_bottle', name: 'Botella de agua', icon: '💧', description: 'Agua potable de la tienda de la esquina.' },
+  canned_food: { id: 'canned_food', name: 'Lata de comida', icon: '🥫', description: 'Frijoles en lata. Aguantan mucho tiempo.' },
+  flashlight: { id: 'flashlight', name: 'Linterna', icon: '🔦', description: 'Ilumina de noche. Se enciende sola cuando oscurece.' },
   berries: { id: 'berries', name: 'Bayas', icon: '🫐', description: 'Bayas silvestres y jugosas.', eatOnPickup: { stat: 'hunger', amount: 18 } },
 };
 

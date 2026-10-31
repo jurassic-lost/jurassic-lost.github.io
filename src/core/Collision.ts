@@ -10,6 +10,22 @@ export interface Collider {
   top: number;
   /** false para obstáculos que se pueden atravesar temporalmente (desactivados). */
   active: boolean;
+  /**
+   * Opcional: caja alineada a los ejes (medias medidas en X y Z) en lugar de cilindro.
+   * Se usa para paredes, casas y autos de la ciudad (Proyecto Génesis). `r` debe cubrir la caja.
+   */
+  hx?: number;
+  hz?: number;
+}
+
+/** Crea una caja de colisión (centro, medias medidas y altura superior). */
+export function boxCollider(x: number, z: number, hx: number, hz: number, top: number): Collider {
+  return { x, z, hx, hz, r: Math.hypot(hx, hz), top, active: true };
+}
+
+/** Punto más cercano de la caja al punto (x, z). */
+function closestOnBox(c: Collider, x: number, z: number): [number, number] {
+  return [Math.max(c.x - c.hx!, Math.min(c.x + c.hx!, x)), Math.max(c.z - c.hz!, Math.min(c.z + c.hz!, z))];
 }
 
 export class CollisionWorld {
@@ -55,7 +71,21 @@ export class CollisionWorld {
   /** ¿Hay algún obstáculo que bloquee un círculo en (x, z)? */
   blocked(x: number, z: number, radius: number): boolean {
     for (const c of this.query(x, z, radius + 4, tmp)) {
-      if (Math.hypot(x - c.x, z - c.z) < c.r + radius) return true;
+      if (c.hx !== undefined) {
+        const [qx, qz] = closestOnBox(c, x, z);
+        if (Math.hypot(x - qx, z - qz) < radius) return true;
+      } else if (Math.hypot(x - c.x, z - c.z) < c.r + radius) return true;
+    }
+    return false;
+  }
+
+  /** ¿Hay un obstáculo en este punto (x, y, z) más alto que y? (para la cámara). */
+  pointBlocked(x: number, y: number, z: number, pad: number): boolean {
+    for (const c of this.query(x, z, pad + 1, tmp)) {
+      if (c.top <= y) continue;
+      if (c.hx !== undefined) {
+        if (Math.abs(x - c.x) < c.hx + pad && Math.abs(z - c.z) < c.hz! + pad) return true;
+      } else if (Math.hypot(x - c.x, z - c.z) < c.r + pad) return true;
     }
     return false;
   }
@@ -67,6 +97,27 @@ export class CollisionWorld {
   resolve(pos: { x: number; y: number; z: number }, radius: number): number {
     let support = -Infinity;
     for (const c of this.query(pos.x, pos.z, radius + 4, tmp)) {
+      if (c.hx !== undefined) {
+        const inside = Math.abs(pos.x - c.x) <= c.hx && Math.abs(pos.z - c.z) <= c.hz!;
+        const [qx, qz] = closestOnBox(c, pos.x, pos.z);
+        const bx = pos.x - qx, bz = pos.z - qz, bd = Math.hypot(bx, bz);
+        if (!inside && bd >= radius) continue;
+        if (pos.y >= c.top - 0.35) {
+          if (inside || bd < radius * 0.3) support = Math.max(support, c.top);
+          continue;
+        }
+        if (inside) {
+          // Dentro de la caja: sale por el lado más cercano.
+          const ex = c.hx - Math.abs(pos.x - c.x), ez = c.hz! - Math.abs(pos.z - c.z);
+          if (ex < ez) pos.x = c.x + Math.sign(pos.x - c.x || 1) * (c.hx + radius);
+          else pos.z = c.z + Math.sign(pos.z - c.z || 1) * (c.hz! + radius);
+        } else {
+          const push = (radius - bd) / bd;
+          pos.x += bx * push;
+          pos.z += bz * push;
+        }
+        continue;
+      }
       const dx = pos.x - c.x, dz = pos.z - c.z;
       const d = Math.hypot(dx, dz);
       const min = c.r + radius;
