@@ -11,7 +11,7 @@ const END = 27;
 
 /**
  * Introducción cinematográfica (se puede omitir):
- * cuarto → juego misterioso en el celular → anomalía temporal → destello → llegada a la selva y título.
+ * cuarto gamer → juego misterioso en la computadora → anomalía temporal → destello → llegada a la selva y título.
  */
 export class Intro {
   private readonly room = new Bedroom();
@@ -36,7 +36,7 @@ export class Intro {
     const keys = Array.from(seq.children) as HTMLElement[];
     this.events = [
       [0.6, () => this.caption('Una noche cualquiera, en su cuarto…')],
-      [3.6, () => this.caption('…encontró en su celular un juego que nadie conocía.')],
+      [3.6, () => this.caption('…encontró en su computadora un juego que nadie conocía.')],
       [6.2, () => { this.caption(''); phone.classList.add('show'); a.beep(520, 0.2); }],
       [7.4, () => phone.classList.add('hint')],
       ...SEQUENCE.map((_, i) => [8.2 + i * 0.6, () => { keys[i].classList.add('on'); a.beep(600 + i * 120); }] as [number, () => void]),
@@ -90,15 +90,18 @@ export class Intro {
 
   private renderRoom(dt: number) {
     const t = this.t, r = this.room, cam = this.camera;
+    // El niño estira la mano hacia la pantalla cuando empieza la anomalía.
+    r.kid.reach = Math.max(0, Math.min(1, (t - 12.4) / 1.2));
     r.kid.update(dt, 0, true, false, 0);
-    // Cámara: plano general que se acerca lentamente al niño.
+    r.update(dt);
+    // Cámara: plano general del cuarto que se acerca por detrás del niño hasta la pantalla.
     const k = Math.min(1, t / 12);
     const e = k * k * (3 - 2 * k);
-    cam.position.set(1.7 - e * 2.0, 1.65 - e * 0.35, 2.3 - e * 2.0);
-    this.look.set(-1.4, 0.95, -0.75);
+    cam.position.set(-1.9 + e * 1.85, 1.9 - e * 0.45, 2.2 - e * 2.9);
+    this.look.set(0.5 + e * 0.6, 1.15 + e * 0.15, -2.4);
     // Anomalía: temblor, luz del celular, portal y objetos flotando.
     const an = Math.max(0, (t - 12.9) / (ROOM_END - 12.9));
-    r.phoneLight.intensity = 0.6 + Math.sin(t * 6) * 0.15 + (t > 8 ? 1.2 : 0) + an * 25;
+    r.phoneLight.intensity = 3 + Math.sin(t * 6) * 0.3 + (t > 8 ? 1.5 : 0) + an * 25;
     r.phoneLight.color.setHSL(0.52 + an * 0.25, 1, 0.6);
     if (an > 0) {
       const shake = an * an * 0.06;

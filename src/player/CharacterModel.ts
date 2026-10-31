@@ -86,6 +86,10 @@ export class CharacterModel {
 
   /** Pose sentada con el celular en las manos (introducción). */
   sitting = false;
+  /** Sentado: inclinación de la cabeza (0.45 mira hacia abajo, 0 al frente). */
+  sitHead = 0.45;
+  /** Sentado: 0..1, estira el brazo izquierdo hacia delante (introducción). */
+  reach = 0;
   /** Se llama en cada paso (para sonidos). */
   onStep?: () => void;
 
@@ -442,8 +446,14 @@ export class CharacterModel {
       this.armL.rotation.x = this.armR.rotation.x = -0.75;
       this.elbowL.rotation.x = this.elbowR.rotation.x = -0.9;
       this.armL.rotation.z = -0.35; this.armR.rotation.z = 0.35;
-      this.head.rotation.x = 0.45;
+      this.head.rotation.x = this.sitHead;
       this.head.rotation.y = 0;
+      if (this.reach > 0) {
+        const r = this.reach;
+        this.armL.rotation.x = -0.75 - r * 1.15;
+        this.elbowL.rotation.x = -0.9 * (1 - r);
+        this.armL.rotation.z = -0.35 + r * 0.2;
+      }
       return;
     }
     this.armL.rotation.z = 0.12; this.armR.rotation.z = -0.12;

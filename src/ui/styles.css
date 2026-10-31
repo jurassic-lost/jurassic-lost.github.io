@@ -161,17 +161,18 @@ body.touch .desktop-only { display: none; }
   text-align: center; font-size: clamp(18px, 3vw, 28px); font-style: italic; text-shadow: 0 2px 8px #000, 0 0 2px #000;
   opacity: 0; transition: opacity 0.8s; }
 #intro-caption.show { opacity: 1; }
-#intro-phone { position: absolute; left: 50%; top: 50%; width: min(250px, 42vh); aspect-ratio: 9 / 18; transform: translate(-50%, -40%) scale(0.85);
-  background: #15181d; border-radius: 30px; padding: 14px 10px; box-shadow: 0 0 0 3px #3a3f48, 0 20px 60px rgba(0,0,0,0.7), 0 0 60px rgba(95, 224, 255, 0.35);
+/* Pantalla de la computadora (primer plano del juego misterioso). */
+#intro-phone { position: absolute; left: 50%; top: 50%; width: min(560px, 86vw, 120vh); aspect-ratio: 16 / 10; transform: translate(-50%, -40%) scale(0.85);
+  background: #0c0d11; border-radius: 12px; padding: 10px; box-shadow: 0 0 0 3px #3a3f48, 0 20px 60px rgba(0,0,0,0.7), 0 0 60px rgba(95, 224, 255, 0.35);
   opacity: 0; transition: opacity 0.6s, transform 0.6s; }
 #intro-phone.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-#intro-phone .screen { height: 100%; border-radius: 20px; background: radial-gradient(circle at 50% 30%, #1b3a5c, #070b1a 70%);
+#intro-phone .screen { height: 100%; border-radius: 6px; background: radial-gradient(circle at 50% 30%, #1b3a5c, #070b1a 70%);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 12px; text-align: center; overflow: hidden; }
 #intro-phone .app { font-weight: bold; letter-spacing: 0.12em; color: #7df9ff; font-size: 14px; animation: flicker 1.2s infinite; }
 @keyframes flicker { 0%, 100% { opacity: 1; } 45% { opacity: 0.6; } 50% { opacity: 1; } 52% { opacity: 0.3; } }
 #intro-phone .hint { font-size: 13px; opacity: 0; transition: opacity 0.5s; color: #d8e8ff; }
 #intro-phone.hint .hint { opacity: 1; }
-#intro-phone .seq { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+#intro-phone .seq { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
 #intro-phone .seq span { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; border: 2px solid #2d4d74;
   font-size: 22px; color: #4d6d94; transition: all 0.15s; }
 #intro-phone .seq span.on { background: #7df9ff; color: #04202b; border-color: #fff; box-shadow: 0 0 18px #7df9ff; transform: scale(1.08); }
