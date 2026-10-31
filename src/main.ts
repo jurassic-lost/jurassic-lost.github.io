@@ -8,6 +8,7 @@ import { preloadRiggedCharacters } from './player/RiggedModel';
 import { createPersistence } from './profile/persistence';
 import { PlayerSession } from './profile/session';
 import { MainMenu } from './ui/MainMenu';
+import { setupFriendsMenu } from './ui/FriendsMenu';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -42,8 +43,8 @@ async function boot() {
 
   const menu = new MainMenu(service, persistent, game);
   (window as unknown as { menu: MainMenu }).menu = menu;
-  menu.onPlay = (profile, save) => {
-    game.setSession(new PlayerSession(profile, service, save));
+  menu.onPlay = (profile, save, mode) => {
+    game.setSession(new PlayerSession(profile, service, save, mode));
     $('start-screen').classList.add('hidden');
     if (!game.isTouch) game.renderer.domElement.requestPointerLock?.();
     else document.documentElement.requestFullscreen?.().catch(() => {});
@@ -62,6 +63,7 @@ async function boot() {
   $('btn-pause').onclick = () => game.setPaused(true);
   $('btn-pause').addEventListener('pointerdown', (e) => e.stopPropagation());
   $('btn-stats').onclick = () => { if (game.session) { game.session.capture(game); MainMenu.showStats(game.session); } };
+  setupFriendsMenu(game.mp, game.hud);
   $('btn-pause-settings').onclick = () => menu.openSettings(game.session?.profile ?? null);
   $('btn-intro').onclick = () => game.replayIntro();
   $('btn-respawn').onclick = () => { game.respawnAtSafePoint(false); game.setPaused(false); };
@@ -76,7 +78,7 @@ async function boot() {
     setTimeout(() => { armed = false; reset.textContent = 'Reiniciar la partida de este perfil'; }, 3000);
   };
   window.addEventListener('keydown', (e) => {
-    const overlay = !$('settings-screen').classList.contains('hidden') || !$('stats-screen').classList.contains('hidden');
+    const overlay = !$('settings-screen').classList.contains('hidden') || !$('stats-screen').classList.contains('hidden') || !$('mp-screen').classList.contains('hidden');
     if ((e.code === 'Escape' || e.code === 'KeyP') && game.paused && !overlay && !document.pointerLockElement) resume();
   });
 }

@@ -155,3 +155,19 @@ El miedo viene del sonido, la oscuridad y el comportamiento de los dinosaurios, 
 ## Escenario realista (Poly Haven y ambientCG, CC0)
 
 Roca y dos árboles de Poly Haven convertidos desde Blender a GLB ligeros (`public/models/props`, ver `CREDITOS.txt`), cargados por `src/world/propModels.ts`; si no cargan, se usan los modelos procedurales. Cielo nocturno fotografiado como bóveda de la noche y foto de un bosque de día como luz ambiental en calidad media y alta (`src/world/sky`).
+
+## Modos de juego: Historia y Mundo abierto
+
+- **📖 Historia**: la aventura con la trama (introducción, misiones, capítulo de terror). Se juega solo.
+- **🌍 Mundo abierto**: la misma isla, sin trama, para jugar con amigos. Tiene su **propia partida guardada** (`<perfil>~abierto`), así que no cambia la de la historia.
+
+### Jugar con amigos (salas con código)
+
+- Al entrar en el mundo abierto se abre «Jugar con amigos»: **Crear una sala** da un código de 5 letras; los demás lo escriben en **Unirme**.
+- Hasta **6 exploradores**, en **dos equipos de 3** (🟢 Verde y 🟠 Naranja). Al entrar se reparte para que queden parejos y cada uno puede cambiarse si hay sitio.
+- Los de tu equipo salen siempre en el minimapa; los rivales solo si están cerca. Cada uno tiene su nombre encima con el color de su equipo.
+- Un rival te golpea → empujón, sin quitar salud. Al **tercer golpe te atrapa**: vuelves a tu refugio (o al claro) **sin perder nada** y su equipo suma un punto. Dentro de un refugio nadie te puede golpear. A los de tu equipo no les haces daño.
+- No hay chat de texto (es un juego para niños): solo nombres, que ya pasan por el filtro.
+- Técnica: conexiones directas entre navegadores (WebRTC) con [PeerJS](https://peerjs.com/) y su servidor gratuito para encontrar la sala; quien crea la sala reparte los mensajes. Si quien creó la sala sale, la sala se cierra. Los dinosaurios todavía no se sincronizan: cada uno ve los suyos.
+- Dentro de Claude (archivo único) el visor puede bloquear la conexión: para jugar con amigos usa https://jurassic-lost.github.io.
+- Prueba: `node tests/e2e-multiplayer.cjs` (abre 3 navegadores y su propio servidor de salas local).

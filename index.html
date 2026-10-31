@@ -34,6 +34,7 @@
       </div>
     </div>
     <div id="clock"></div>
+    <div id="mp-badge" class="hidden"></div>
     <div id="target" class="hidden"><b></b><div class="tbar"><i></i></div></div>
     <div id="fps" class="hidden"></div>
     <div id="hotbar"></div>
@@ -108,7 +109,8 @@
         </div>
       </div>
       <div id="menu-buttons" class="hidden">
-        <button id="btn-continue" class="primary">CONTINUAR AVENTURA</button>
+        <button id="btn-continue" class="primary">📖 HISTORIA: CONTINUAR</button>
+        <button id="btn-open-world" class="hidden">🌍 MUNDO ABIERTO (con amigos)</button>
         <button id="btn-new">NUEVA AVENTURA</button>
         <button id="btn-character">MI PERSONAJE</button>
         <button id="btn-settings">CONFIGURACIÓN</button>
@@ -208,10 +210,36 @@
     </div>
   </div>
 
+  <div id="mp-screen" class="screen hidden">
+    <div class="panel mp-panel">
+      <h2>👥 Jugar con amigos</h2>
+      <p class="tag">Hasta 6 exploradores en la misma isla, en dos equipos de 3. Cada uno conserva su propia partida guardada.</p>
+      <div id="mp-off">
+        <button id="mp-host" class="primary">Crear una sala</button>
+        <p class="or">o entra en la sala de un amigo:</p>
+        <div class="mp-join-row">
+          <input id="mp-code" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="CÓDIGO" aria-label="Código de la sala" />
+          <button id="mp-join">Unirme</button>
+        </div>
+      </div>
+      <div id="mp-on" class="hidden">
+        <p>Código de la sala</p>
+        <div id="mp-room" class="mp-code"></div>
+        <p class="tag" id="mp-hint">Díselo a tus amigos para que entren desde «Jugar con amigos».</p>
+        <div id="mp-list"></div>
+        <p class="tag">🟢 y 🟠 son rivales: si un rival te golpea 3 veces te atrapa y vuelves a tu refugio (sin perder nada). Cada atrapado da un punto a su equipo. A los de tu equipo no les puedes hacer daño.</p>
+        <button id="mp-leave">Salir de la sala</button>
+      </div>
+      <p id="mp-status" class="name-msg" role="status"></p>
+      <button id="mp-back" class="primary">Volver</button>
+    </div>
+  </div>
+
   <div id="pause-menu" class="screen hidden">
     <div class="panel">
       <h2>Pausa</h2>
       <button id="btn-resume" class="primary">Continuar</button>
+      <button id="btn-friends">👥 Jugar con amigos</button>
       <button id="btn-stats">Mi explorador</button>
       <button id="btn-pause-settings">Configuración</button>
       <button id="btn-intro">Ver la introducción</button>

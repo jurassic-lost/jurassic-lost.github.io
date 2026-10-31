@@ -3,8 +3,8 @@ import { isTouchDevice } from '../core/Settings';
 import { FRAGMENTS_TOTAL, GameSave, MAX_PROFILES, Profile, SCHEMA_VERSION } from '../profile/types';
 import { HAIR_COLORS, HAIR_STYLES, OUTFIT_NAMES, PANTS_COLORS, SHIRT_COLORS, SKIN_TONES, defaultAppearance, defaultSettings, sanitizeAppearance, starterOutfit } from '../profile/appearance';
 import { checkName } from '../profile/nameFilter';
-import { PersistenceService, newId } from '../profile/persistence';
-import { PlayerSession } from '../profile/session';
+import { PersistenceService, newId, openWorldId } from '../profile/persistence';
+import { PlayerSession, type GameMode } from '../profile/session';
 import { daysSurvived } from '../world/DayNight';
 import { MISSIONS } from '../core/Objectives';
 import { levelFor } from '../profile/experience';
@@ -30,7 +30,7 @@ export class MainMenu {
   private draft = defaultAppearance('boy');
   private nameOk = false;
   /** Se llama al empezar a jugar. */
-  onPlay?: (profile: Profile, save: GameSave | null) => void;
+  onPlay?: (profile: Profile, save: GameSave | null, mode: GameMode) => void;
 
   constructor(private readonly store: PersistenceService, private readonly persistent: boolean, private readonly game: Game) {
     this.preview = new CharacterPreview($<HTMLCanvasElement>('creator-canvas'), { interactive: true });
@@ -70,6 +70,7 @@ export class MainMenu {
     $('menu-buttons').classList.remove('hidden');
     $('welcome').classList.toggle('hidden', !a);
     $('btn-continue').classList.toggle('hidden', !a);
+    $('btn-open-world').classList.toggle('hidden', !a);
     $('btn-character').textContent = a ? 'MI PERSONAJE' : 'MI PERSONAJE';
     $('btn-new').classList.toggle('primary', !a);
     if (a) {
@@ -79,7 +80,7 @@ export class MainMenu {
       $('welcome-region').textContent = `📍 Región: ${sv ? regionName(sv.world.region) : 'Claro inicial'}`;
       $('welcome-mission').textContent = `🎯 Misión: ${sv ? missionName(sv) : 'Primeros pasos'}`;
       $('welcome-saved').textContent = `💾 Último guardado: ${sv && sv.savedAt ? formatDate(sv.savedAt) : 'todavía no hay partida'}`;
-      $('btn-continue').textContent = sv && sv.savedAt ? 'CONTINUAR AVENTURA' : 'COMENZAR AVENTURA';
+      $('btn-continue').textContent = sv && sv.savedAt ? '📖 HISTORIA: CONTINUAR' : '📖 HISTORIA: COMENZAR';
     }
     const slots = $('profile-slots');
     slots.classList.toggle('hidden', this.summaries.length === 0);
@@ -110,6 +111,12 @@ export class MainMenu {
 
   private wireMain() {
     $('btn-continue').onclick = () => { if (this.active) this.play(this.active.profile, this.active.save); };
+    // Mundo abierto: misma ropa y nombre, pero su propia partida (no cambia la de la historia).
+    $('btn-open-world').onclick = async () => {
+      if (!this.active) return;
+      const p = this.active.profile;
+      this.play(p, await this.store.loadGame(openWorldId(p.id)).catch(() => null), 'abierto');
+    };
     $('btn-new').onclick = () => {
       if (this.summaries.length >= MAX_PROFILES) { this.status('⚠️ Ya hay 3 perfiles. Borra uno con 🗑 para crear otro.', 'menu'); return; }
       this.openCreator(null);
@@ -130,10 +137,10 @@ export class MainMenu {
     if (id === 'menu-creator') this.preview.start(); else this.preview.stop();
   }
 
-  private play(profile: Profile, save: GameSave | null) {
+  private play(profile: Profile, save: GameSave | null, mode: GameMode = 'historia') {
     try { localStorage.setItem(LAST_KEY, profile.id); } catch { /* ignorar */ }
     this.preview.stop();
-    this.onPlay?.(profile, save);
+    this.onPlay?.(profile, save, mode);
   }
 
   // ---------- Creador de personaje ----------

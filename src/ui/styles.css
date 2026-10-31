@@ -306,7 +306,20 @@ fieldset.access { border: 2px solid var(--ui-border); border-radius: 12px; displ
   background: var(--ui-bg); padding: 4px 10px; border-radius: 10px; }
 #save-ind.show { animation: save-fade 2.2s ease-out; }
 @keyframes save-fade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
-#settings-screen, #stats-screen { z-index: 12; }
+#settings-screen, #stats-screen, #mp-screen { z-index: 12; }
+.mp-panel { max-width: 420px; text-align: center; }
+.mp-panel .or { margin: 14px 0 6px; opacity: 0.85; }
+.mp-join-row { display: flex; gap: 8px; justify-content: center; }
+#mp-code { width: 9em; font-size: 22px; letter-spacing: 0.25em; text-transform: uppercase; text-align: center; padding: 8px; border-radius: 12px; border: 2px solid var(--ui-border); background: #0c1e12; color: #ffe9a8; }
+.mp-code { font-size: 40px; font-weight: 800; letter-spacing: 0.3em; color: #ffe9a8; margin: 4px 0 6px; user-select: all; }
+#mp-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; text-align: left; }
+.mp-team { border: 2px solid #3fbf5a; border-radius: 12px; padding: 6px 8px; background: rgba(0,0,0,0.2); }
+.mp-team.naranja { border-color: #ff8a2a; }
+.mp-team.mine { box-shadow: 0 0 0 2px #ffe9a855; }
+.mp-team h4 { margin: 0 0 4px; font-size: 14px; }
+.mp-team div { padding: 2px 0; font-size: 14px; }
+.mp-team button { margin-top: 6px; font-size: 12px; padding: 4px 8px; width: 100%; }
+#mp-badge { position: absolute; top: calc(46px + var(--safe-t)); right: calc(174px + var(--safe-r)); background: var(--ui-bg); border: 2px solid var(--ui-border); color: #bfefff; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: bold; pointer-events: none; white-space: nowrap; }
 
 @media (max-width: 760px) {
   .panel.creator { flex-direction: column; }
@@ -343,6 +356,7 @@ body.touch #hotbar > * { width: 44px; height: 44px; min-height: 0; padding: 0; f
 #btn-craft { top: calc(202px + var(--safe-t)); }
 @media (max-width: 760px), (max-height: 500px) {
   #clock { top: calc(122px + var(--safe-t)); font-size: 11px; padding: 2px 6px; }
+  #mp-badge { top: calc(148px + var(--safe-t)); font-size: 11px; }
   body.touch .mat { min-width: 0; padding: 4px 8px; font-size: 13px; }
   body.touch .mat b { font-size: 14px; }
 }

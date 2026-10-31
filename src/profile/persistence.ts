@@ -40,6 +40,9 @@ export function migrateSave(s: GameSave): GameSave {
   return s;
 }
 
+/** El mundo abierto tiene su propia partida (no toca la del modo historia). */
+export const openWorldId = (profileId: string) => `${profileId}~abierto`;
+
 const DB_NAME = 'jurassic-lost';
 const DB_VERSION = 1;
 
@@ -89,6 +92,8 @@ export class IndexedDBPersistence implements PersistenceService {
     t.objectStore('profiles').delete(id);
     t.objectStore('saves').delete(`${id}:current`);
     t.objectStore('saves').delete(`${id}:backup`);
+    t.objectStore('saves').delete(`${openWorldId(id)}:current`);
+    t.objectStore('saves').delete(`${openWorldId(id)}:backup`);
     await done(t);
   }
 
@@ -132,7 +137,7 @@ export class MemoryPersistence implements PersistenceService {
     if (!this.profiles.has(p.id) && this.profiles.size >= MAX_PROFILES) throw new Error('Máximo de perfiles alcanzado');
     this.profiles.set(p.id, { ...p, updatedAt: Date.now() });
   }
-  async deleteProfile(id: string) { this.profiles.delete(id); this.saves.delete(id); }
+  async deleteProfile(id: string) { this.profiles.delete(id); this.saves.delete(id); this.saves.delete(openWorldId(id)); }
   async loadGame(id: string) { return this.saves.get(id) ?? null; }
   async saveGame(s: GameSave) { this.saves.set(s.profileId, structuredClone(s)); }
   async lastSaved(id: string) { return this.saves.get(id)?.savedAt ?? null; }

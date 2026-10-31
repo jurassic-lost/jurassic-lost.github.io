@@ -27,6 +27,8 @@ function mesh(geo: THREE.BufferGeometry, m: THREE.Material, x = 0, y = 0, z = 0)
   return o;
 }
 
+export type CharacterAction = 'swing' | 'thrust' | 'throw' | 'bow' | 'hurt' | 'build' | 'pickup';
+
 export class CharacterModel {
   readonly root = new THREE.Group();
   /** Personaje con esqueleto (Mixamo) si hay modelos cargados; si no, null y se usa el procedural. */
@@ -81,7 +83,7 @@ export class CharacterModel {
     this.phone.visible = !obj;
   }
 
-  playAttack(kind: 'swing' | 'thrust' | 'throw' | 'bow') { this.attackT = 0; this.attackKind = kind; this.rig?.trigger('attack'); }
+  playAttack(kind: 'swing' | 'thrust' | 'throw' | 'bow') { this.attackT = 0; this.attackKind = kind; this.rig?.trigger('attack'); this.onAction?.(kind); }
   get attacking() { return this.attackT >= 0; }
 
   /** Pose sentada con el celular en las manos (introducción). */
@@ -92,6 +94,8 @@ export class CharacterModel {
   reach = 0;
   /** Se llama en cada paso (para sonidos). */
   onStep?: () => void;
+  /** Se llama al empezar una animación de acción (para enviarla a los demás jugadores). */
+  onAction?: (kind: CharacterAction) => void;
 
   constructor(appearance?: Appearance) {
     const r = this.root;
@@ -392,12 +396,12 @@ export class CharacterModel {
   get currentAppearance() { return { ...this.appearance }; }
 
   /** Reacción breve al recibir un golpe. */
-  playHurt() { this.hurtT = 0; this.rig?.trigger('hurt'); }
+  playHurt() { this.hurtT = 0; this.rig?.trigger('hurt'); this.onAction?.('hurt'); }
   /** Animación de construir / martillear (refugios). */
-  playBuild() { this.buildT = 0; this.rig?.trigger('build'); }
+  playBuild() { this.buildT = 0; this.rig?.trigger('build'); this.onAction?.('build'); }
   get building() { return this.buildT >= 0; }
 
-  playPickup() { this.pickT = 0; this.rig?.trigger('pickup'); }
+  playPickup() { this.pickT = 0; this.rig?.trigger('pickup'); this.onAction?.('pickup'); }
   get busy() { return this.pickT >= 0; }
 
   /** speed en m/s horizontal; grounded indica si toca el suelo. */

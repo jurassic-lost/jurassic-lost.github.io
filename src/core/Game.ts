@@ -25,6 +25,7 @@ import { CollisionWorld } from './Collision';
 import { windTime } from './textures';
 import { Intro } from '../intro/Intro';
 import { Story } from '../story/Story';
+import { Multiplayer, RemotePlayer } from '../net/Multiplayer';
 import nightSkyUrl from '../world/sky/cielo-noche.jpg';
 import dayLightUrl from '../world/sky/luz-dia.jpg';
 import { PostFX } from './PostFX';
@@ -53,6 +54,8 @@ export class Game {
   readonly buildings: Buildings;
   /** Historia (capítulo 1): visita nocturna, huellas, CRONOS-047 y mensajes del celular. */
   readonly story: Story;
+  /** Jugar con amigos en la misma isla (salas con código, PeerJS). */
+  readonly mp: Multiplayer;
   readonly post: PostFX;
   readonly particles: Particles;
   private shake = 0;
@@ -73,6 +76,10 @@ export class Game {
   readonly dinos: Dinosaur[] = [];
   readonly pterosaurs: Pterosaur[] = [];
   private trexWarned = 0;
+  /** Juego por equipos: golpes recibidos de rivales, tiempo para olvidarlos y protección tras ser atrapado. */
+  private pvpHits = 0;
+  private pvpForget = 0;
+  private pvpSafe = 0;
   readonly audio = new AudioManager();
   /** Voz que lee los textos importantes (se puede apagar en Opciones). */
   readonly narrator = new Narrator();
@@ -131,6 +138,26 @@ export class Game {
     this.player.spawn(SPAWN.x, SPAWN.z);
     this.scene.add(this.player.model.root);
     this.cam = new ThirdPersonCamera(this.camera, this.terrain, this.collisions);
+    const me = this.player, game = this;
+    this.mp = new Multiplayer(this.terrain, {
+      get position() { return me.position; },
+      get facing() { return me.facing; },
+      get speed() { return me.speed; },
+      get grounded() { return me.grounded; },
+      get crouching() { return me.crouching; },
+      get vy() { return me.velocity.y; },
+      get sitting() { return me.model.sitting || game.resting; },
+      get aiming() { return me.model.aiming; },
+      get weapon() { return game.hotbar?.selected ?? 'hand'; },
+      profile: () => ({
+        name: this.session?.profile.displayName ?? 'Explorador',
+        look: me.model.currentAppearance,
+        lvl: this.session?.level.level ?? 1,
+      }),
+    });
+    this.scene.add(this.mp.group);
+    me.model.onAction = (k) => this.mp.action(k);
+    this.mp.onHit = (from) => this.pvpHit(from);
 
     // Manada de triceratops visible desde el claro inicial y un gigante a lo lejos.
     let seed = 100;
@@ -272,7 +299,7 @@ export class Game {
     this.objectives.onMissionComplete = (m, next) => {
       this.hud.toast(next ? `🏆 ¡${m.title} completado! Nueva misión: ${next.title}` : `🏆 ¡${m.title} completado!`, true);
       if (next?.id === 'refugio') setTimeout(() => this.hud.toast('🛖 Reúne materiales y abre 🛠 para construir un refugio. Allí podrás dormir a salvo.'), 2500);
-      if (next?.id === 'huellas' && !this.story.has('night_visit')) setTimeout(() => this.hud.toast('🌙 Cuando anochezca, duerme en tu refugio… y escucha con atención.'), 2500);
+      if (next?.id === 'huellas' && this.storyMode && !this.story.has('night_visit')) setTimeout(() => this.hud.toast('🌙 Cuando anochezca, duerme en tu refugio… y escucha con atención.'), 2500);
       if (next?.id === 'kiro') setTimeout(() => this.hud.toast('🌿 Capítulo 2 muy pronto: ¿quién chilla entre los helechos?', true), 6000);
       this.session?.addXp(XP.mission, 'mission');
       // Los materiales que ya llevas cuentan para la nueva misión.
@@ -371,7 +398,11 @@ export class Game {
   }
 
   /** Comienza la partida; en una partida nueva se reproduce antes la introducción. */
-  start(withIntro = this.session?.isNew ?? true) {
+  /** 'historia' (con la trama) o 'abierto' (mundo abierto para jugar en salas con amigos). */
+  get mode() { return this.session?.mode ?? 'historia'; }
+  get storyMode() { return this.mode === 'historia'; }
+
+  start(withIntro = this.storyMode && (this.session?.isNew ?? true)) {
     this.audio.start();
     if (!withIntro) { this.begin(false); return; }
     this.playing = false;
@@ -396,6 +427,13 @@ export class Game {
       setTimeout(() => this.hud.toast('SOBREVIVE. ENCUENTRA LA MANERA DE REGRESAR A CASA.', true), 400);
       setTimeout(() => this.hud.toast('📱 Tu celular dice: ERROR TEMPORAL'), 3800);
       this.story.afterIntro();
+    }
+    document.getElementById('objective')!.classList.toggle('hidden', !this.storyMode);
+    document.getElementById('btn-friends')!.classList.toggle('hidden', this.storyMode);
+    if (!this.storyMode) {
+      // Mundo abierto: sin trama; se abre directamente la pantalla de salas.
+      setTimeout(() => this.hud.toast('🌍 Mundo abierto: crea una sala o entra en la de un amigo', true), 300);
+      setTimeout(() => { if (!this.mp.active && !this.paused) { this.setPaused(true); document.getElementById('btn-friends')!.click(); } }, 1200);
     }
   }
 
@@ -509,7 +547,10 @@ export class Game {
 
     this.collectibles.update(dt, this.focus);
     this.meat.update(dt);
-    this.story.update(dt, Dinosaur.night, sheltered);
+    if (this.storyMode) this.story.update(dt, Dinosaur.night, sheltered);
+    this.mp.update(dt);
+    this.pvpSafe = Math.max(0, this.pvpSafe - dt);
+    if (this.pvpHits && (this.pvpForget -= dt) <= 0) this.pvpHits = 0;
     this.updateBuilding(dt);
     this.updateTimeOfDay(false, dt);
     this.terrain.update(dt);
@@ -529,7 +570,7 @@ export class Game {
     this.hud.updateStats(this.survival);
     this.hud.drawMinimap(pp.x, pp.z, Math.PI - this.player.facing, this.dinos.filter((d) => !d.down).map((d) => ({
       x: d.position.x, z: d.position.z, color: (d.cfg as Species).map.color, size: (d.cfg as Species).map.size,
-    })).concat(this.buildings.shelters.map((s) => ({ x: s.position.x, z: s.position.z, color: '#ffcf4a', size: 4 }))).concat(this.story.markers()));
+    })).concat(this.buildings.shelters.map((s) => ({ x: s.position.x, z: s.position.z, color: '#ffcf4a', size: 4 }))).concat(this.story.markers()).concat(this.mp.markers()));
     this.post.setMood(this.env.daylight, this.env.dusk);
     this.post.render(dt);
     if (this.settings.showFps) this.hud.tickFps(dt, `${this.renderer.info.render.calls} draws`);
@@ -579,6 +620,20 @@ export class Game {
         const dot = to.divideScalar(dist).dot(dir);
         if (dot > bestDot) { bestDot = dot; target = c.clone(); }
       }
+      // Rivales (juego por equipos): si el más alineado es un rival, le llega el golpe al caer el proyectil.
+      let foe: RemotePlayer | null = null;
+      for (const e of this.mp.enemies()) {
+        c.copy(e.position).setY(e.position.y + 1.1);
+        const to = c.clone().sub(this.camera.position);
+        const dist = to.length();
+        if (dist > 45) continue;
+        const dot = to.divideScalar(dist).dot(dir);
+        if (dot > bestDot) { bestDot = dot; target = c.clone(); foe = e; }
+      }
+      if (foe) {
+        const hitFoe = foe, flight = Math.hypot(target.x - from.x, target.z - from.z) / w.ranged.speed;
+        setTimeout(() => { if (this.mp.enemies().includes(hitFoe)) { this.mp.hit(hitFoe); this.audio.thud(0.3); } }, flight * 1000);
+      }
       const flat = Math.hypot(target.x - from.x, target.z - from.z);
       const aim = target.sub(from).normalize();
       // Compensa la caída del proyectil.
@@ -598,7 +653,21 @@ export class Game {
         if (ang > 1.2 && dist > 0.4) continue;
         best = d; bestDist = dist;
       }
-      const hit = !!best;
+      let foe: RemotePlayer | null = null;
+      for (const e of this.mp.enemies()) {
+        const dx = e.position.x - pp.x, dz = e.position.z - pp.z;
+        const dist = Math.hypot(dx, dz) - 0.35;
+        if (dist > w.reach || dist >= bestDist) continue;
+        const ang = Math.abs(((Math.atan2(dx, dz) - this.player.facing + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+        if (ang > 1.2 && dist > 0.4) continue;
+        foe = e; best = null; bestDist = dist;
+      }
+      if (foe) {
+        this.player.facing = Math.atan2(foe.position.x - pp.x, foe.position.z - pp.z);
+        this.audio.thud(0.4);
+        this.mp.hit(foe);
+      }
+      const hit = !!best || !!foe;
       if (best) {
         this.player.facing = Math.atan2(best.position.x - pp.x, best.position.z - pp.z);
         this.hitDino(best, w.damage);
@@ -614,6 +683,35 @@ export class Game {
     this.audio.thud(0.45);
     d.takeHit(damage, this.player.position);
     this.hud.showTarget(d.cfg.name, d.hpFraction);
+  }
+
+  /**
+   * Un rival (juego por equipos) te golpea: empujón y aviso, sin quitar salud.
+   * Al tercer golpe te atrapa: vuelves a tu refugio sin perder nada y su equipo gana un punto.
+   */
+  private pvpHit(from: RemotePlayer) {
+    const pp = this.player.position;
+    if (this.pvpSafe > 0 || this.resting || this.buildings.insideShelter(pp)) return;
+    this.pvpHits++;
+    this.pvpForget = 10;
+    this.audio.thud(0.6);
+    this.player.model.playHurt();
+    const dx = pp.x - from.position.x, dz = pp.z - from.position.z, l = Math.hypot(dx, dz) || 1;
+    this.player.velocity.x += (dx / l) * 7;
+    this.player.velocity.z += (dz / l) * 7;
+    this.player.velocity.y = 3.5;
+    this.player.grounded = false;
+    const el = document.getElementById('hurt')!;
+    if (!(this.settings as Partial<ProfileSettings>).reduceMotion) {
+      el.classList.add('on');
+      setTimeout(() => el.classList.remove('on'), 160);
+    }
+    if (this.pvpHits < 3) { this.hud.toast(`¡${from.info.name} te golpeó! (${this.pvpHits}/3) ¡Escapa o defiéndete!`); return; }
+    this.pvpHits = 0;
+    this.pvpSafe = 8;
+    this.respawnAtSafePoint(false);
+    this.hud.toast(`🏁 ¡${from.info.name} te atrapó! Vuelves a tu refugio (no pierdes nada).`, true);
+    this.mp.caught(from);
   }
 
   /** Un dinosaurio embiste o muerde al jugador: daño, empujón y aviso. */
@@ -659,7 +757,7 @@ export class Game {
       this.hud.toast(this.buildings.shelters.some((s) => s.built)
         ? '🌇 Está anocheciendo. Vuelve a tu refugio para dormir.'
         : '🌇 Está anocheciendo. Construye un refugio para pasar la noche a salvo.', true);
-      this.story.onDusk(c.day);
+      if (this.storyMode) this.story.onDusk(c.day);
     }
     if (this.wasNight && !c.night && !this.resting) this.hud.toast(`🌅 ¡Amanece! Día ${c.day}`, true);
     this.wasNight = c.night;
@@ -675,7 +773,7 @@ export class Game {
     if (this.resting || this.story.visiting) return;
     const night = this.worldClock.night || this.worldClock.hour >= 17;
     // La primera noche en el refugio, algo enorme se acerca…
-    if (this.story.shouldVisit(night)) { this.story.startVisit(home); return; }
+    if (this.storyMode && this.story.shouldVisit(night)) { this.story.startVisit(home); return; }
     const skip = night ? secondsUntilHour(this.gameTime, 6.5) : Math.max(60, (hourToCycle(17.5) - this.worldClock.cycle) * DAY_SECONDS);
     this.resting = true;
     this.input.enabled = false;

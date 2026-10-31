@@ -4,7 +4,9 @@ import { PLAY_LIMIT, SPAWN } from '../world/config';
 import { regionAt, regionName } from '../world/regions';
 import { daysSurvived } from '../world/DayNight';
 import { XP, levelFor } from './experience';
-import type { PersistenceService } from './persistence';
+import { openWorldId, type PersistenceService } from './persistence';
+
+export type GameMode = 'historia' | 'abierto';
 import { GameSave, Profile, SCHEMA_VERSION, newCompanion } from './types';
 
 export { DAY_SECONDS } from '../world/DayNight';
@@ -28,8 +30,12 @@ export class PlayerSession {
   onSaved?: (ok: boolean) => void;
   onXp?: (amount: number, why: string) => void;
 
-  constructor(readonly profile: Profile, private readonly store: PersistenceService, existing: GameSave | null) {
-    this.save = existing ?? PlayerSession.blank(profile.id);
+  /**
+   * @param mode 'historia' (la aventura con trama) o 'abierto' (mundo abierto con salas de amigos,
+   *   con su propia partida guardada aparte).
+   */
+  constructor(readonly profile: Profile, private readonly store: PersistenceService, existing: GameSave | null, readonly mode: GameMode = 'historia') {
+    this.save = existing ?? PlayerSession.blank(mode === 'abierto' ? openWorldId(profile.id) : profile.id);
     this.revision = this.save.revision;
   }
 
