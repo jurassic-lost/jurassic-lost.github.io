@@ -12,7 +12,50 @@ export type { Appearance };
 export type Pose = 'idle' | 'walk' | 'run' | 'jump' | 'crouch' | 'crouchWalk';
 
 const mat = (c: THREE.ColorRepresentation, roughness = 0.75) => new THREE.MeshStandardMaterial({ color: c, roughness, metalness: 0, envMapIntensity: 0.25 });
-const SHOE = mat('#6b4a2e', 0.85), SOLE = mat('#2e2219', 0.9), PACK = mat('#7a5634', 0.85), PACK_DARK = mat('#5e4128', 0.85), STRAP = mat('#4a3420');
+/**
+ * Textura de desgaste (gris claro con manchas, roces y costuras) que oscurece un poco
+ * el color de la ropa para que parezca usada en la selva. Se crea una vez y la comparten todos.
+ */
+function wornTexture(seed: number, scratches: number) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d')!;
+  let r = seed;
+  const rnd = () => ((r = (r * 16807) % 2147483647) / 2147483647);
+  g.fillStyle = '#e6e6e6';
+  g.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 70; i++) {
+    const v = 150 + Math.floor(rnd() * 105);
+    g.fillStyle = `rgba(${v},${v},${v},0.35)`;
+    g.beginPath();
+    g.ellipse(rnd() * 128, rnd() * 128, 4 + rnd() * 16, 3 + rnd() * 10, rnd() * 3, 0, Math.PI * 2);
+    g.fill();
+  }
+  g.strokeStyle = 'rgba(255,255,255,0.35)';
+  for (let i = 0; i < scratches; i++) {
+    g.lineWidth = 0.5 + rnd();
+    const x = rnd() * 128, y = rnd() * 128;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + (rnd() - 0.5) * 22, y + (rnd() - 0.5) * 10); g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+let leatherTex: THREE.Texture | null = null, clothTex: THREE.Texture | null = null;
+const leather = () => (leatherTex ??= wornTexture(7, 40));
+const cloth = () => (clothTex ??= wornTexture(11, 8));
+const worn = (c: THREE.ColorRepresentation, roughness: number, tex: () => THREE.Texture) => {
+  const m = mat(c, roughness);
+  if (typeof document !== 'undefined') m.map = tex();
+  return m;
+};
+
+const SHOE = mat('#6b4a2e', 0.85), SOLE = mat('#2e2219', 0.9), STRAP = mat('#4a3420');
+/** Mochila de lona verde oliva, chamarra de cuero café gastado, capucha gris y guantes sin dedos. */
+const PACK = worn('#6f6c3e', 0.9, cloth), PACK_DARK = worn('#57552f', 0.9, cloth);
+const JACKET = worn('#6e4428', 0.62, leather), JACKET_DARK = worn('#4f2f1b', 0.7, leather);
+const HOOD = worn('#76787b', 0.95, cloth), GLOVE = mat('#2b2622', 0.7);
 const LACE = mat('#d9c9a3'), METAL = new THREE.MeshStandardMaterial({ color: '#b8bcc0', roughness: 0.35, metalness: 0.8 });
 const IRIS = mat('#6b4423', 0.3), BLUSH = new THREE.MeshStandardMaterial({ color: '#f08a7e', transparent: true, opacity: 0.35, roughness: 1 });
 const MOUTH = mat('#8a3b2a'), EMBLEM = mat('#3b3127', 0.9);
@@ -39,8 +82,8 @@ export class CharacterModel {
   private readonly mBrow = mat('#3a2210', 0.8);
   private readonly mShirt = mat('#d8c8a8', 0.85);
   private readonly mShirtDark = mat('#b9a987', 0.85);
-  private readonly mPants = mat('#5b5d43', 0.9);
-  private readonly mPantsDark = mat('#4a4c36', 0.9);
+  private readonly mPants = worn('#5b5d43', 0.9, cloth);
+  private readonly mPantsDark = worn('#4a4c36', 0.9, cloth);
   private readonly hairGroup = new THREE.Group();
   private appearance: Appearance = defaultAppearance('boy');
   private hurtT = -1;
@@ -123,13 +166,15 @@ export class CharacterModel {
       cuff.rotation.x = Math.PI / 2;
       knee.add(cuff);
       // Bota: caña, empeine redondeado, suela gruesa y cordones
-      knee.add(mesh(new THREE.CylinderGeometry(0.068, 0.072, 0.1, 16), SHOE, 0, -0.27, 0));
+      // Caña alta (botas de explorador hasta media pierna) con el borde doblado
+      knee.add(mesh(new THREE.CylinderGeometry(0.076, 0.074, 0.15, 16), SHOE, 0, -0.25, 0));
+      knee.add(mesh(new THREE.TorusGeometry(0.076, 0.012, 6, 16), SOLE, 0, -0.175, 0).rotateX(Math.PI / 2));
       const toe = mesh(new THREE.SphereGeometry(0.075, 16, 12), SHOE, 0, -0.31, 0.055);
       toe.scale.set(1, 0.72, 1.45);
       knee.add(toe);
       const sole = mesh(new THREE.BoxGeometry(0.15, 0.04, 0.26), SOLE, 0, -0.355, 0.035);
       knee.add(sole);
-      for (let i = 0; i < 3; i++) knee.add(mesh(new THREE.BoxGeometry(0.07, 0.008, 0.012), LACE, 0, -0.24 - i * 0.025, 0.07 + i * 0.008));
+      for (let i = 0; i < 4; i++) knee.add(mesh(new THREE.BoxGeometry(0.07, 0.008, 0.012), LACE, 0, -0.2 - i * 0.025, 0.075 + i * 0.006));
       this.hips.add(leg);
     }
     const pelvis = mesh(new THREE.SphereGeometry(0.16, 18, 12), this.mPants, 0, 0.0, 0);
@@ -167,7 +212,43 @@ export class CharacterModel {
     belt.scale.set(1, 1, 0.74);
     this.torso.add(belt);
     this.torso.add(mesh(new THREE.BoxGeometry(0.05, 0.04, 0.02), METAL, 0, 0.0, 0.12));
-    this.torso.add(mesh(new THREE.BoxGeometry(0.07, 0.07, 0.05), PACK_DARK, 0.12, -0.03, 0.07));
+    // Bolsa de pierna (como la funda de la hoja de diseño)
+    this.torso.add(mesh(new THREE.BoxGeometry(0.05, 0.09, 0.07), PACK_DARK, 0.175, -0.1, 0.02));
+
+    // Chamarra de cuero abierta por delante (deja ver la camiseta y su color) y sudadera gris con capucha.
+    const OPEN = 0.5;
+    const jProfile = [[0.172, -0.075], [0.176, 0.05], [0.178, 0.18], [0.19, 0.3], [0.165, 0.372], [0.1, 0.405], [0.075, 0.425]]
+      .map(([x, y]) => new THREE.Vector2(x, y));
+    const jacketMat = JACKET.clone();
+    jacketMat.side = THREE.DoubleSide;
+    const jacket = mesh(new THREE.LatheGeometry(jProfile, 24, OPEN, Math.PI * 2 - OPEN * 2), jacketMat);
+    jacket.scale.set(1, 1, 0.74);
+    this.torso.add(jacket);
+    // Bordes de la abertura con cierre metálico, bolsillos con solapa y cuello alzado
+    for (const sx of [-1, 1]) {
+      const edge = mesh(new THREE.BoxGeometry(0.012, 0.42, 0.012), JACKET_DARK, Math.sin(OPEN) * 0.18 * sx, 0.17, Math.cos(OPEN) * 0.18 * 0.74 + 0.003);
+      edge.add(mesh(new THREE.BoxGeometry(0.004, 0.4, 0.004), METAL, -0.004 * sx, 0, 0.006));
+      this.torso.add(edge);
+      const pocket = mesh(new THREE.BoxGeometry(0.075, 0.07, 0.012), JACKET_DARK, 0.12 * sx, 0.06, 0.112);
+      pocket.rotation.y = 0.55 * sx;
+      pocket.add(mesh(new THREE.BoxGeometry(0.08, 0.02, 0.016), JACKET, 0, 0.035, 0.002));
+      this.torso.add(pocket);
+      const chest = mesh(new THREE.BoxGeometry(0.06, 0.05, 0.012), JACKET_DARK, 0.13 * sx, 0.27, 0.118);
+      chest.rotation.y = 0.5 * sx;
+      this.torso.add(chest);
+    }
+    const collar = mesh(new THREE.TorusGeometry(0.095, 0.022, 8, 20, Math.PI * 2 - 1.2), JACKET_DARK, 0, 0.405, -0.005);
+    collar.rotation.set(Math.PI / 2 - 0.25, 0, Math.PI / 2 + 0.6);
+    collar.scale.set(1, 0.8, 1);
+    this.torso.add(collar);
+    // Capucha gris caída en la espalda y cuello de la sudadera con cordones
+    const hood = mesh(new THREE.SphereGeometry(0.12, 16, 12), HOOD, 0, 0.39, -0.12);
+    hood.scale.set(1.15, 0.62, 0.7);
+    this.torso.add(hood);
+    const hoodNeck = mesh(new THREE.TorusGeometry(0.075, 0.02, 8, 20), HOOD, 0, 0.405, 0.0);
+    hoodNeck.rotation.x = Math.PI / 2 - 0.15;
+    this.torso.add(hoodNeck);
+    for (const sx of [-1, 1]) this.torso.add(mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.1, 6), LACE, 0.025 * sx, 0.34, 0.1));
 
     // Mochila redondeada con bolsillo, solapa, correas y cantimplora
     const pack = new THREE.Group();
@@ -185,31 +266,45 @@ export class CharacterModel {
     const bottle = mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.15, 14), METAL, 0.16, -0.04, 0);
     bottle.add(mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.03, 10), STRAP, 0, 0.09, 0));
     pack.add(bottle);
+    // Correas de cuero que cierran la mochila y un saco de dormir enrollado abajo
+    for (const sx of [-0.05, 0.05]) pack.add(mesh(new THREE.BoxGeometry(0.022, 0.2, 0.01), STRAP, sx, -0.01, -0.083));
+    const roll = mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.26, 14), HOOD, 0, -0.15, -0.01);
+    roll.rotation.z = Math.PI / 2;
+    pack.add(roll);
+    pack.scale.setScalar(1.2);
+    pack.position.z = -0.185;
     this.torso.add(pack);
     for (const sx of [-0.085, 0.085]) {
-      const strap = mesh(new THREE.BoxGeometry(0.035, 0.36, 0.015), STRAP, sx, 0.2, 0.118);
+      const strap = mesh(new THREE.BoxGeometry(0.035, 0.36, 0.015), STRAP, sx * 1.2, 0.2, 0.13);
       strap.rotation.x = -0.12;
       this.torso.add(strap);
-      const over = mesh(new THREE.BoxGeometry(0.035, 0.015, 0.25), STRAP, sx, 0.385, -0.01);
+      const over = mesh(new THREE.BoxGeometry(0.035, 0.015, 0.27), STRAP, sx * 1.2, 0.39, -0.01);
       this.torso.add(over);
     }
 
     // Brazos: manga corta, piel y manos
     for (const [arm, elbow, side] of [[this.armL, this.elbowL, 1], [this.armR, this.elbowR, -1]] as const) {
       arm.position.set(0.2 * side, 0.34, 0);
-      const sleeve = mesh(cap(0.062, 0.07), this.mShirt, 0, -0.04, 0);
-      arm.add(sleeve);
-      arm.add(mesh(cap(0.044, 0.15), this.mSkin, 0, -0.13, 0));
+      // Mangas largas de cuero con hombrera, codo y puño más oscuros
+      arm.add(mesh(cap(0.066, 0.06), JACKET, 0, -0.03, 0));
+      arm.add(mesh(cap(0.056, 0.15), JACKET, 0, -0.13, 0));
       arm.add(elbow);
       elbow.position.y = -0.23;
-      elbow.add(mesh(cap(0.04, 0.14), this.mSkin, 0, -0.09, 0));
-      const hand = mesh(new THREE.SphereGeometry(0.048, 16, 12), this.mSkin, 0, -0.205, 0.005);
-      hand.scale.set(0.85, 1.1, 1);
+      elbow.add(mesh(new THREE.SphereGeometry(0.056, 12, 10), JACKET_DARK, 0, 0, 0));
+      elbow.add(mesh(cap(0.051, 0.1), JACKET, 0, -0.07, 0));
+      elbow.add(mesh(new THREE.TorusGeometry(0.047, 0.012, 6, 16), JACKET_DARK, 0, -0.15, 0).rotateX(Math.PI / 2));
+      elbow.add(mesh(cap(0.037, 0.03), this.mSkin, 0, -0.16, 0));
+      // Mano con guante sin dedos: dorso oscuro y puntas de los dedos de piel
+      const hand = mesh(new THREE.SphereGeometry(0.048, 16, 12), GLOVE, 0, -0.2, 0.005);
+      hand.scale.set(0.88, 1.0, 1.02);
       elbow.add(hand);
+      const tips = mesh(new THREE.SphereGeometry(0.036, 12, 10), this.mSkin, 0, -0.238, 0.008);
+      tips.scale.set(1.05, 0.8, 1.1);
+      elbow.add(tips);
       // Reloj de explorador en la muñeca izquierda
       if (side === 1) {
-        const watch = mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.025, 14), STRAP, 0, -0.16, 0);
-        watch.add(mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.012, 14), METAL, 0, 0, 0.04).rotateX(Math.PI / 2));
+        const watch = mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.022, 14), STRAP, 0, -0.125, 0);
+        watch.add(mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.012, 14), METAL, 0, 0, 0.056).rotateX(Math.PI / 2));
         elbow.add(watch);
       }
       arm.rotation.z = 0.12 * side;
