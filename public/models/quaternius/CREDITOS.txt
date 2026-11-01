@@ -22,7 +22,7 @@ Archivos:
   stegosaurus.glb      Estegosaurio
   apatosaurus.glb      Apatosaurio
   parasaurolophus.glb  Parasaurolofo
-  velociraptor.glb     Velocirraptor (incluido, aún sin usar)
+  velociraptor.glb     Velocirraptor: base del modelo de Kiro, recoloreado
 
 Nota técnica: los archivos originales venían comprimidos con meshopt. Se han
 descomprimido (misma geometría y animaciones) para que carguen sin WebAssembly.
