@@ -116,6 +116,7 @@ export class Kiro {
   private biteT = 0;
   /** Momento con guion (al liberarlo, salta y se aleja un poco). */
   private dashTo: THREE.Vector2 | null = null;
+  private dashT = 0;
 
   constructor(private readonly game: Game, x: number, z: number, mode: KiroMode) {
     this.dino = new Dinosaur(KIRO, x, z, game.terrain, game.collisions, 1077);
@@ -159,6 +160,7 @@ export class Kiro {
   /** Al soltarlo de las lianas: da un salto y corre a esconderse a unos metros. */
   free() {
     this.setMode('scared');
+    this.dashT = 0;
     const p = this.game.player.position, k = this.dino.position;
     const a = Math.atan2(k.x - p.x, k.z - p.z);
     this.dashTo = new THREE.Vector2(k.x + Math.sin(a) * 6, k.z + Math.cos(a) * 6);
@@ -193,14 +195,20 @@ export class Kiro {
     if (this.mode === 'scared') {
       if (this.dashTo) {
         d.scripted(dt, this.dashTo.x, this.dashTo.y, 5.5);
-        if (Math.hypot(d.position.x - this.dashTo.x, d.position.z - this.dashTo.y) < 1 || this.t > 600) this.dashTo = null;
+        this.dashT += dt;
+        if (Math.hypot(d.position.x - this.dashTo.x, d.position.z - this.dashTo.y) < 1 || this.dashT > 2.5) this.dashTo = null;
         return;
       }
-      // Desconfía: si te acercas sin comida, se aparta. Con las bayas, se queda quieto.
+      // Desconfía pero no quiere quedarse solo: te sigue de lejos (unos 4 m).
+      // Si te acercas sin comida, se aparta; con las bayas, se deja acercar.
       const hasFood = g.story.berriesReady();
-      if (!hasFood && dist < 3.2) {
+      if (dist > 40) this.catchUp();
+      if (!hasFood && dist < 2.6) {
         const a = Math.atan2(d.position.x - pp.x, d.position.z - pp.z);
         d.scripted(dt, d.position.x + Math.sin(a) * 3, d.position.z + Math.cos(a) * 3, 4);
+      } else if (dist > 5.5) {
+        const k = 4 / dist;
+        d.scripted(dt, pp.x + (d.position.x - pp.x) * k, pp.z + (d.position.z - pp.z) * k, Math.min(6.5, 1.5 + dist * 0.5));
       } else d.scripted(dt, d.position.x, d.position.z, 0, pp);
       this.nextChirp -= dt;
       if (this.nextChirp <= 0 && dist < 20) { g.audio.chirp(0.12, g.panOf(d.position)); this.nextChirp = 6 + Math.random() * 4; }

@@ -105,6 +105,11 @@ async function pressUntil(page, done, tries = 6) {
   check('Al soltarlo corre a esconderse', freed && fr.mode === 'scared' && !fr.vines, JSON.stringify(fr));
   const d0 = await kiroDist(page);
   check('Asustado, se aleja de ti', d0 > 3, `${d0.toFixed(1)} m`);
+  await page.evaluate(() => { const g = window.game, p = g.player.position; g.player.spawn(p.x + 14, p.z + 4); });
+  const sf = await kiroDist(page);
+  await runStory(page, 8);
+  const sn = await kiroDist(page);
+  check('Aunque está asustado, te sigue de lejos', sf > 10 && sn < 6.5 && sn > 2, `${sf.toFixed(1)} m → ${sn.toFixed(1)} m`);
 
   // 3. Juntar 3 bayas (se guardan en vez de comerse).
   const hunger0 = await page.evaluate(() => { window.game.survival.hunger = 40; return 40; });

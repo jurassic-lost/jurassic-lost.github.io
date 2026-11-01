@@ -623,7 +623,7 @@ export class Story {
     g.audio.rustle(0.35, g.panOf(this.kiro.position));
     this.kiro.free();
     g.objectives.set('kiro_free', 1);
-    setTimeout(() => g.hud.toast('Se suelta de un tirón y corre a esconderse. Está flaquita y tiembla… ¿tendrá hambre? Busca 3 bayas 🫐', true), 900);
+    setTimeout(() => g.hud.toast('Se suelta de un tirón y se aparta asustada… pero te sigue de lejos. Está flaquita: junta 3 bayas 🫐 y ofrécelas para que confíe en ti.', true), 900);
     void g.save('mission');
   }
 
