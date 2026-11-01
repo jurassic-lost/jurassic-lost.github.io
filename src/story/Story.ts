@@ -153,6 +153,7 @@ export class Story {
     this.placePiece();
     this.kiro?.dispose();
     this.kiro = null;
+    document.getElementById('btn-kiro')?.classList.add('hidden');
   }
 
   export(): StoryState { return structuredClone(this.state); }
@@ -560,6 +561,7 @@ export class Story {
         if (this.has(f)) g.objectives.set(id, 1);
       if (this.has('kiro_friend')) g.objectives.set('kiro_berries', 3);
     }
+    document.getElementById('btn-kiro')?.classList.toggle('hidden', k?.mode !== 'friend');
     if (!k) return;
     const dist = Math.hypot(k.position.x - pp.x, k.position.z - pp.z);
     if (!this.has('kiro_found') && dist < 8) {
@@ -642,7 +644,7 @@ export class Story {
     g.input.flush();
     g.input.enabled = !g.paused && !g.hotbar.craftOpen;
     setTimeout(() => { g.audio.signal(0.14); g.hud.phone('«…señal de K-1R0 detectada… no se separen…»'); }, 1500);
-    setTimeout(() => g.hud.toast('🛖 Kiro te sigue. Llévalo a tu refugio para que esté a salvo.'), 9000);
+    setTimeout(() => g.hud.toast(`🦖 Kiro te sigue y te ayuda a pelear: ${g.isTouch ? 'toca el botón 🦖' : 'pulsa K'} y atacará al dinosaurio más cercano. Ahora llévalo a tu refugio.`, true), 9000);
     void g.save('mission');
   }
 }

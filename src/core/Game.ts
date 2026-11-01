@@ -230,6 +230,7 @@ export class Game {
     document.getElementById('btn-craft')!.addEventListener('click', () => { if (this.buildings.placing) this.cancelBuild(); else this.hotbar.toggleCraft(); });
     document.getElementById('btn-craft')!.addEventListener('pointerdown', (e) => e.stopPropagation());
     document.getElementById('btn-attack')?.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); this.input.press('attack'); });
+    document.getElementById('btn-kiro')?.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); this.input.press('kiro'); });
     this.wireEvents();
     this.applySettings();
     this.updateTimeOfDay(true);
@@ -554,6 +555,7 @@ export class Game {
     }
     for (let i = 1; i <= 5; i++) if (this.input.consume(`slot${i}` as 'slot1')) this.hotbar.selectIndex(i - 1);
     if (this.input.consume('attack') && !this.hotbar.craftOpen) this.attack();
+    if (this.input.consume('kiro') && this.storyMode) this.story.kiro?.orderAttack();
     this.player.model.aiming = this.hotbar.selected === 'bow' && this.weaponCd > -0.6;
     this.projectiles.update(dt, this.dinos, (d, dmg) => this.hitDino(d, dmg));
 

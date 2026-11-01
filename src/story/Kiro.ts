@@ -2,11 +2,15 @@ import * as THREE from 'three';
 import type { Game } from '../core/Game';
 import { Dinosaur, type SpeciesConfig } from '../creatures/Dinosaur';
 import { buildKiro } from '../creatures/dinoModels';
+import { buildQuatDino, hasQuat } from '../creatures/quatModels';
 
 /** Kiro: el único dinosaurio de la isla que nunca ataca. */
 export const KIRO: SpeciesConfig = {
   hp: Infinity, reaction: 'flee', attack: 0, bodyHeight: 0.6, friendly: true,
-  name: 'Kiro', build: buildKiro, scale: 1, radius: 0.3, walkSpeed: 2.6, fleeSpeed: 7, turnRate: 6,
+  name: 'Kiro', build: () => (hasQuat('velociraptor')
+    // Velocirraptor animado de Quaternius (CC0), del tamaño de un perro grande y con tonos cálidos.
+    ? buildQuatDino('velociraptor', { height: 1.3, speciesScale: 1, biped: true, colors: { Brown: '#4b4f55', LightBrown: '#d8c49b', Black: '#120f0b' } })
+    : buildKiro()), scale: 1, radius: 0.3, walkSpeed: 2.6, fleeSpeed: 7, turnRate: 6,
   perception: 10, personal: 1.5, homeRadius: 10, stride: 0.6, graze: 0, behavior: 'curious',
 } as SpeciesConfig;
 
@@ -36,6 +40,43 @@ function vines() {
     g.add(l);
   }
   return g;
+}
+
+/**
+ * Rayas finas azul cobalto en el lomo (solo arriba y sueltas, para que Kiro sea
+ * un personaje propio y no se parezca a ninguno de una película).
+ */
+function addDorsalStreaks(root: THREE.Object3D) {
+  root.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh) return;
+    for (const mat of (Array.isArray(m.material) ? m.material : [m.material]) as THREE.MeshStandardMaterial[]) {
+      if (mat.name !== 'Brown' || mat.userData.streaks) continue;
+      mat.userData.streaks = true;
+      const bb = m.geometry.boundingBox ?? (m.geometry.computeBoundingBox(), m.geometry.boundingBox!);
+      const size = bb.getSize(new THREE.Vector3());
+      const lenAxis = size.x > size.z ? 0 : 2;
+      const base = mat.onBeforeCompile;
+      mat.onBeforeCompile = (sh, r) => {
+        base.call(mat, sh, r);
+        sh.uniforms.uStrY = { value: new THREE.Vector2(bb.min.y, size.y) };
+        sh.uniforms.uStrLen = { value: (lenAxis === 0 ? size.x : size.z) };
+        sh.fragmentShader = sh.fragmentShader
+          .replace('uniform sampler2D tSkin;', 'uniform sampler2D tSkin;\nuniform vec2 uStrY;\nuniform float uStrLen;')
+          .replace('#include <roughnessmap_fragment>', `{
+  float h = (vSkinPos.y - uStrY.x) / uStrY.y;
+  float up = smoothstep(0.25, 0.85, normalize(vSkinNrm).y);
+  float along = ${lenAxis === 0 ? 'vSkinPos.x' : 'vSkinPos.z'} / uStrLen;
+  float band = smoothstep(0.55, 0.9, sin(along * 46.0 + sin(along * 13.0) * 1.5) * 0.5 + 0.5);
+  float streak = up * smoothstep(0.35, 0.6, h) * band * (0.55 + skinS.g * 0.45);
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.09, 0.2, 0.55), streak * 0.85);
+}
+#include <roughnessmap_fragment>`);
+      };
+      mat.customProgramCacheKey = () => 'reptile-skin-streaks';
+      mat.needsUpdate = true;
+    }
+  });
 }
 
 /** Collar metálico de CRONOS con una luz azul. */
@@ -69,17 +110,27 @@ export class Kiro {
   private scan = 0;
   private side = 1;
   private hop = 0;
+  /** Dinosaurio al que Kiro está atacando por orden tuya. */
+  private target: Dinosaur | null = null;
+  private attackT = 0;
+  private biteT = 0;
   /** Momento con guion (al liberarlo, salta y se aleja un poco). */
   private dashTo: THREE.Vector2 | null = null;
 
   constructor(private readonly game: Game, x: number, z: number, mode: KiroMode) {
     this.dino = new Dinosaur(KIRO, x, z, game.terrain, game.collisions, 1077);
     this.dino.rig.root.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
+    addDorsalStreaks(this.dino.rig.root);
     const c = collar();
     this.led = c.getObjectByName('led') as THREE.Mesh;
     // El collar va en el cuello, justo detrás de la cabeza.
     const neck = this.dino.rig.neckBones[Math.max(0, this.dino.rig.neckBones.length - 1)] ?? this.dino.rig.headBone;
     neck.add(c);
+    // Los huesos del modelo animado vienen escalados: el collar se compensa para medir lo mismo.
+    this.root.updateMatrixWorld(true);
+    const ws = new THREE.Vector3();
+    neck.getWorldScale(ws);
+    c.scale.setScalar(0.6 / Math.max(1e-4, ws.x));
     this.dino.onStep = () => { if (this.mode === 'friend' && this.dino.position.distanceTo(game.player.position) < 14) game.audio.rustle(0.05, game.panOf(this.dino.position)); };
     this.setMode(mode);
   }
@@ -156,6 +207,9 @@ export class Kiro {
       return;
     }
 
+    // Atacando por orden tuya: corre hacia el dinosaurio y lo muerde hasta vencerlo.
+    if (this.target) { this.updateAttack(dt); return; }
+
     // Compañero: te sigue un poco por detrás, a un lado.
     if (dist > 40 || (dist > 18 && g.terrain.waterDepthAt(d.position.x, d.position.z) > 0.4)) this.catchUp();
     const f = g.player.facing;
@@ -187,6 +241,68 @@ export class Kiro {
           const where = c > 0.7 ? 'delante de ti' : c < -0.7 ? 'detrás de ti' : s > 0 ? 'a tu izquierda' : 'a tu derecha';
           g.hud.toast(`🦎 ¡Kiro chilla y se esconde! Un ${threat.cfg.name.toLowerCase()} anda cerca, ${where}. Agáchate o aléjate.`, true);
         }
+      }
+    }
+  }
+
+  /** Dinosaurios enemigos a los que Kiro puede atacar (cerca de ti). */
+  private enemyNear(range: number) {
+    const pp = this.game.player.position;
+    let best: Dinosaur | null = null, bd = range;
+    for (const o of this.game.dinos) {
+      if (o.down || o.cfg.friendly || o.cfg.hp === Infinity) continue;
+      const d = Math.hypot(o.position.x - pp.x, o.position.z - pp.z);
+      if (d < bd) { bd = d; best = o; }
+    }
+    return best;
+  }
+
+  /** Orden «¡Kiro, ataca!»: va a por el enemigo más cercano a ti. */
+  orderAttack() {
+    const g = this.game;
+    if (this.mode !== 'friend') return;
+    if (this.target) { this.target = null; g.hud.toast('🦖 Kiro, ¡ven aquí! Vuelve a tu lado.'); this.sync(); return; }
+    const t = this.enemyNear(30);
+    if (!t) { g.audio.chirp(0.15, g.panOf(this.dino.position)); g.hud.toast('🦖 Kiro mira a su alrededor: no hay ningún dinosaurio cerca.'); return; }
+    this.target = t;
+    this.attackT = 0;
+    this.biteT = 0;
+    this.dino.roar(0.8);
+    g.audio.chirp(0.35, g.panOf(this.dino.position));
+    g.hud.toast(`🦖 ¡Kiro, ataca! Kiro corre hacia el ${t.cfg.name.toLowerCase()}.`);
+    this.sync();
+  }
+
+  /** ¿Está atacando ahora? */
+  get attacking() { return !!this.target; }
+
+  private sync() { document.getElementById('btn-kiro')?.classList.toggle('busy', !!this.target); }
+
+  private updateAttack(dt: number) {
+    const g = this.game, d = this.dino, t = this.target!;
+    this.attackT += dt;
+    this.biteT -= dt;
+    const pp = g.player.position;
+    // Se rinde si el enemigo cae, se aleja mucho de ti o tarda demasiado.
+    if (t.down || this.attackT > 20 || Math.hypot(t.position.x - pp.x, t.position.z - pp.z) > 45) {
+      if (t.down) g.hud.toast('🦖 ¡Bien hecho, Kiro! Vuelve contigo moviendo la cola.');
+      this.target = null;
+      this.sync();
+      return;
+    }
+    const reach = t.cfg.radius * t.cfg.scale + 0.9;
+    const dx = t.position.x - d.position.x, dz = t.position.z - d.position.z, dist = Math.hypot(dx, dz);
+    if (dist > reach) {
+      // Corre hasta quedar al lado del enemigo.
+      d.scripted(dt, t.position.x - (dx / dist) * (reach - 0.3), t.position.z - (dz / dist) * (reach - 0.3), 7.5);
+    } else {
+      d.scripted(dt, d.position.x, d.position.z, 0, t.position);
+      if (this.biteT <= 0) {
+        this.biteT = 0.9;
+        d.roar(0.5);
+        g.audio.chirp(0.3, g.panOf(d.position));
+        // Mordisco: más débil que tus armas, pero ayuda mucho contra los grandes.
+        t.takeHit(9, pp);
       }
     }
   }

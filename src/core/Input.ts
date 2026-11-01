@@ -9,7 +9,7 @@ export interface InputState {
   crouch: boolean;
 }
 
-export type Action = 'jump' | 'interact' | 'crouch' | 'pause' | 'inventory' | 'map' | 'attack' | 'craft' | 'slot1' | 'slot2' | 'slot3' | 'slot4' | 'slot5';
+export type Action = 'jump' | 'interact' | 'crouch' | 'pause' | 'inventory' | 'map' | 'attack' | 'craft' | 'slot1' | 'slot2' | 'slot3' | 'slot4' | 'slot5' | 'kiro';
 
 export class Input {
   readonly state: InputState = { moveX: 0, moveY: 0, run: false, crouch: false };
@@ -60,6 +60,7 @@ export class Input {
         if (k === 'KeyM') this.press('map');
         if (k === 'KeyF') this.press('attack');
         if (k === 'KeyT') this.press('craft');
+        if (k === 'KeyK') this.press('kiro');
         const m = /^Digit([1-5])$/.exec(k);
         if (m) this.press(`slot${m[1]}` as Action);
       }

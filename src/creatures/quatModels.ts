@@ -11,8 +11,8 @@ import type { DinoRig } from './dinoModels';
  * Se recolorean con tonos naturales, se suavizan y llevan la piel de escamas PBR.
  * Miran a +Z, como el juego. Si no se cargan, el juego usa los modelos procedurales.
  */
-// En la carpeta también están el parasaurolofo y el velocirraptor del mismo paquete, aún sin usar.
-export const QUAT_NAMES = ['t-rex', 'triceratops', 'stegosaurus', 'apatosaurus', 'trex-real'] as const;
+// El velocirraptor es Kiro, el compañero de la historia. El parasaurolofo aún no se usa.
+export const QUAT_NAMES = ['t-rex', 'triceratops', 'stegosaurus', 'apatosaurus', 'trex-real', 'velociraptor'] as const;
 /** Modelos con texturas propias (no se recolorean): el T-rex realista que trajo Ivan. */
 const TEXTURED: readonly QuatName[] = ['trex-real'];
 const FILE: Partial<Record<QuatName, string>> = { 'trex-real': './models/trex/trex.glb' };

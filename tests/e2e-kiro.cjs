@@ -172,6 +172,31 @@ async function pressUntil(page, done, tries = 6) {
   });
   check('Kiro chilla cuando hay un depredador cerca', warn.txt.includes('Kiro chilla'), JSON.stringify(warn));
 
+  // 6b. Modelo animado y orden de ataque.
+  check('Kiro usa el raptor animado', await page.evaluate(() => !!window.game.story.kiro.dino.rig.clips));
+  await page.evaluate(() => { const g = window.game, p = g.player.position; g.story.kiro.catchUp(); g.player.facing = 0; g.cam.yaw = Math.PI * 0.8; g.cam.distance = 4; g.cam.snap(); });
+  await runStory(page, 1);
+  await page.waitForTimeout(2000);
+  await page.screenshot({ path: `${SHOTS}/k5-kiro-raptor.png` });
+  const atk = await page.evaluate(async () => {
+    const g = window.game, d = g.dinos.find((x) => x.cfg.name === 'Triceratops' && !x.down);
+    const back = g.player.position.clone();
+    g.player.spawn(d.position.x + 12, d.position.z + 4);
+    g.story.kiro.catchUp();
+    g.input.press('kiro');
+    await new Promise((r) => setTimeout(r, 1200));
+    const ordered = g.story.kiro.attacking;
+    const t = g.story.kiro.target || d, hp0 = t.hp;
+    for (let i = 0; i < 200 && !t.down && t.hp === hp0; i++) { g.story.update(0.05, 0, false); t.placeAt(t.position.x, t.position.z, t.heading); }
+    const k = g.story.kiro.position;
+    const res = { ordered, name: t.cfg.name, hp0, hp: t.hp, kd: Math.hypot(k.x - t.position.x, k.z - t.position.z).toFixed(1), toast: document.getElementById('toasts').textContent.slice(-120) };
+    g.story.kiro.orderAttack(); if (g.story.kiro.attacking) g.story.kiro.orderAttack();
+    g.player.spawn(back.x, back.z); g.story.kiro.catchUp(); g.cam.snap();
+    return res;
+  });
+  check('Con la orden, Kiro ataca al dinosaurio más cercano', atk.ordered && atk.hp < atk.hp0, JSON.stringify(atk));
+  check('El botón 🦖 aparece cuando Kiro es tu amigo', await page.evaluate(() => !document.getElementById('btn-kiro').classList.contains('hidden')));
+
   // 7. Llevarlo al refugio.
   await page.evaluate(() => { const g = window.game, s = g.buildings.shelters[0], p = s.inside(); g.player.spawn(p.x, p.z); g.story.kiro.catchUp(); g.cam.snap(); });
   await runStory(page, 1.5);

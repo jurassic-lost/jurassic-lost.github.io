@@ -23,7 +23,7 @@ const glb = {};
 for (const f of readdirSync(glbDir)) if (f.endsWith('.glb')) glb[f.replace('.glb', '')] = 'data:model/gltf-binary;base64,' + readFileSync(`${glbDir}/${f}`).toString('base64');
 // Dinosaurios con esqueleto de Quaternius (CC0), con prefijo q_.
 // (El T-rex low-poly no se incrusta: va el realista. Así el archivo cabe en el límite de 16 MB de Claude.)
-for (const f of ['triceratops.glb', 'stegosaurus.glb', 'apatosaurus.glb']) glb['q_' + f.replace('.glb', '')] = 'data:model/gltf-binary;base64,' + readFileSync(`public/models/quaternius/${f}`).toString('base64');
+for (const f of ['triceratops.glb', 'stegosaurus.glb', 'apatosaurus.glb', 'velociraptor.glb']) glb['q_' + f.replace('.glb', '')] = 'data:model/gltf-binary;base64,' + readFileSync(`public/models/quaternius/${f}`).toString('base64');
 glb['q_trex-real'] = 'data:model/gltf-binary;base64,' + readFileSync('public/models/trex/trex.glb').toString('base64');
 // Escenario realista de Poly Haven (CC0), con prefijo p_.
 // Solo uno de los dos árboles realistas en el archivo único (por tamaño); la app web lleva los dos.
